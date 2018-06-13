@@ -1,0 +1,36 @@
+﻿#pragma kernel ClearForces
+#pragma kernel CalculateForces
+
+struct Spring
+{
+	uint massA;
+	uint massB;
+	float equilibriumDistance;
+};
+
+float springCoefficient;
+StructuredBuffer<float3> masses;
+StructuredBuffer<Spring> springs;
+RWStructuredBuffer<float3> resultantForce;
+
+[numthreads(5, 1, 1)]
+void ClearForces(uint3 id : SV_DispatchThreadID)
+{
+	resultantForce[id.x] = 0.0f;
+}
+
+[numthreads(5,1,1)]
+void CalculateForces(uint3 id : SV_DispatchThreadID)
+{
+	float3 massA = masses[springs[id.x].massA];
+	float3 massB = masses[springs[id.x].massB];
+
+	//Calculates spring force using hooke's law	
+	float massDistance = distance(massB, massA); // dl
+	float springForce = springCoefficient * (massDistance - springs[id.x].equilibriumDistance); // f = k * (dl - il)
+	float3 forceVector = normalize(massB - massA) * springForce; // r
+
+	//Adds force to both masses
+	resultantForce[springs[id.x].massA] += forceVector;
+	resultantForce[springs[id.x].massB] -= forceVector;
+}
