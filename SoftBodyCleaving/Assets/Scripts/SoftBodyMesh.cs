@@ -92,6 +92,7 @@ public class SoftBodyMesh : MonoBehaviour
     public float m_neighbourDistance = 10.0f;
     public float m_springCoefficient = 2.0f;
     public float m_dragCoefficient = 2.0f;
+    public float m_fixMassHeight = 40.0f;
 
     private List<Vector3> m_vertices = new List<Vector3>();
     private List<Vector2> m_uvs = new List<Vector2>();
@@ -172,7 +173,7 @@ public class SoftBodyMesh : MonoBehaviour
 
     private void CreateMass(int _vertex)
     {
-        m_masses.Add(new Mass(this, _vertex, m_masses.Count, (m_vertices[_vertex].y > 10.0f)));
+        m_masses.Add(new Mass(this, _vertex, m_masses.Count, (m_vertices[_vertex].y > m_fixMassHeight)));
 
         if(m_highlightMasses)
         {
