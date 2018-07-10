@@ -1,0 +1,75 @@
+﻿#pragma kernel ClearForces
+#pragma kernel CalculateForces
+#pragma kernel CalculateDisplacement
+
+struct Spring
+{
+	uint massA;
+	uint massB;
+	float equilibriumDistance;
+};
+
+struct Mass
+{
+	float3 position;
+	float3 velocity;
+	int resultantForceX;
+	int resultantForceY;
+	int resultantForceZ;
+};
+
+float deltaTime;
+
+float3 globalForce;
+
+float springCoefficient;
+float dragCoefficient;
+
+RWStructuredBuffer<Mass> masses;
+StructuredBuffer<Spring> springs;
+
+[numthreads(5, 1, 1)]
+void ClearForces(uint3 id : SV_DispatchThreadID)
+{
+	masses[id.x].resultantForceX = 0;
+	masses[id.x].resultantForceY = 0;
+	masses[id.x].resultantForceZ = 0;
+}
+
+[numthreads(5,1,1)]
+void CalculateForces(uint3 id : SV_DispatchThreadID)
+{
+	Mass massA = masses[springs[id.x].massA];
+	Mass massB = masses[springs[id.x].massB];
+
+	//Calculates spring force using hooke's law	
+	float massDistance = distance(massB.position, massA.position); // dl
+	float springMagnitude = springCoefficient * (massDistance - springs[id.x].equilibriumDistance); // f = k * (dl - il)
+	int3 springForce = normalize(massB.position - massA.position) * springMagnitude; // r
+
+	int forceX = springForce.x;
+	int forceY = springForce.y;
+	int forceZ = springForce.z;
+
+	//Adds force to both masses
+	InterlockedAdd(masses[springs[id.x].massA].resultantForceX, forceX);
+	InterlockedAdd(masses[springs[id.x].massA].resultantForceY, forceY);
+	InterlockedAdd(masses[springs[id.x].massA].resultantForceZ, forceZ);
+
+	InterlockedAdd(masses[springs[id.x].massB].resultantForceX, -forceX);
+	InterlockedAdd(masses[springs[id.x].massB].resultantForceY, -forceY);
+	InterlockedAdd(masses[springs[id.x].massB].resultantForceZ, -forceZ);
+}
+
+[numthreads(5, 1, 1)]
+void CalculateDisplacement(uint3 id : SV_DispatchThreadID)
+{
+	float3 force = float3(masses[id.x].resultantForceX + globalForce.x,
+		masses[id.x].resultantForceY + globalForce.y, masses[id.x].resultantForceZ + globalForce.z);
+	masses[id.x].velocity = masses[id.x].velocity + (force * deltaTime);
+	masses[id.x].velocity -= dragCoefficient * masses[id.x].velocity;
+
+	masses[id.x].resultantForceX = 0;
+	masses[id.x].resultantForceY = 0;
+	masses[id.x].resultantForceZ = 0;
+}

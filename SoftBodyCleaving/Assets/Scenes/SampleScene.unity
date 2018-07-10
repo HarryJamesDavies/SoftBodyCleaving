@@ -265,7 +265,7 @@ GameObject:
   - component: {fileID: 375548774}
   - component: {fileID: 375548775}
   m_Layer: 0
-  m_Name: Test
+  m_Name: GPUSoftBodiesTest
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -282,9 +282,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8442d726c9a5bc45a5c06c655dd2c8c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_softBody: {fileID: 0}
-  m_mesh: {fileID: 0}
-  m_meshFilter: {fileID: 375548773}
+  m_gpuSoftBody: {fileID: 7200000, guid: b981508b310d6be47aff63eef88a4384, type: 3}
+  m_softBody: {fileID: 375548774}
 --- !u!4 &375548771
 Transform:
   m_ObjectHideFlags: 0
@@ -296,7 +295,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 2
+  m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!23 &375548772
 MeshRenderer:
@@ -351,6 +350,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 098d6ec8fcb1213478bb8893fca4a6e9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_core: {fileID: 375548770}
   m_meshFilter: {fileID: 375548773}
   m_masses: []
   m_springs: []
@@ -359,11 +359,7 @@ MonoBehaviour:
     type: 2}
   m_neighbourDistance: 10
   m_springCoefficient: 2
-  m_dragCoefficient: 0.1
-  m_windCoefficient: 0
-  m_windStep: 0
-  m_windDirection: {x: 0, y: 0, z: 1}
-  m_globalForce: {x: 0, y: 0, z: 0}
+  m_dragCoefficient: 0.01
 --- !u!114 &375548775
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -380,7 +376,79 @@ MonoBehaviour:
   m_highlightObject: {fileID: 1878503626929002, guid: ae87017812d08dd459ee38f002db7365,
     type: 2}
   m_colour: {r: 0, g: 0.116532326, b: 1, a: 1}
-  m_sections: {x: 5, y: 5, z: 0}
+  m_sections: {x: 10, y: 10, z: 0}
   m_dimensions: {x: 5, y: 5, z: 0}
   m_useWorldSpace: 1
   m_backfaceCulling: 0
+--- !u!1 &793627950
+GameObject:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  serializedVersion: 5
+  m_Component:
+  - component: {fileID: 793627951}
+  m_Layer: 0
+  m_Name: CSGTest
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &793627951
+Transform:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 793627950}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 2
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1620081638
+GameObject:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  serializedVersion: 5
+  m_Component:
+  - component: {fileID: 1620081640}
+  - component: {fileID: 1620081639}
+  m_Layer: 0
+  m_Name: GlobalForceManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1620081639
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 1620081638}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5611c7c726ac3564fba65a4757e7000c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_windCoefficient: 2
+  m_windDirection: {x: 0, y: 0, z: 1}
+  m_gravityCoefficient: -9.8
+  m_globalForce: {x: 0, y: 0, z: 0}
+--- !u!4 &1620081640
+Transform:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 1620081638}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 4
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}

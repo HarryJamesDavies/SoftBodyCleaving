@@ -79,8 +79,10 @@ public struct Spring
 
 public class SoftBodyMesh : MonoBehaviour
 {
+    public SoftBodyCore m_core = null;
     public MeshFilter m_meshFilter;
     private Mesh m_mesh;
+
     public List<Mass> m_masses = new List<Mass>();
     public List<Spring> m_springs = new List<Spring>();
 
@@ -90,11 +92,6 @@ public class SoftBodyMesh : MonoBehaviour
     public float m_neighbourDistance = 10.0f;
     public float m_springCoefficient = 2.0f;
     public float m_dragCoefficient = 2.0f;
-    public float m_windCoefficient = 2.0f;
-    public float m_windStep = 0.0f;
-    public Vector3 m_windDirection = Vector3.forward;
-
-    public Vector3 m_globalForce = Vector3.zero;
 
     private List<Vector3> m_vertices = new List<Vector3>();
     private List<Vector2> m_uvs = new List<Vector2>();
@@ -115,6 +112,11 @@ public class SoftBodyMesh : MonoBehaviour
             GenerateMasses();
             GenerateNeighbours();
             GenerateSprings();
+            
+            if (m_core)
+            {
+                m_core.OnMeshGenerated(this);
+            }
         }
     }
 
@@ -195,67 +197,22 @@ public class SoftBodyMesh : MonoBehaviour
             m_vertices[m_masses[_massB].vertex]);
     }
 
-    private void Update()
+    public Vector3 GetVertex(int _vertex)
     {
-        CalculateGlobalForces();
-
-        for (int springIter = 0; springIter < m_springs.Count; springIter++)
-        {
-            CalculateForces(m_springs[springIter]);
-        }
-
-        for (int massIter = 0; massIter < m_masses.Count; massIter++)
-        {
-            CalculateDisplacement(m_masses[massIter]);
-        }
-
-        for (int massIter = 0; massIter < m_masses.Count; massIter++)
-        {
-            ApplyDisplacement(m_masses[massIter]);
-        }
-
-        UpdateMesh();
+        return m_vertices[_vertex];
     }
 
-    void CalculateGlobalForces()
+    public void SetVertex(int _vertex, Vector3 _position)
     {
-        m_globalForce = Vector3.zero;
-        m_globalForce += m_windDirection * Mathf.Sin(m_windStep);
-        m_windStep += Time.deltaTime;
+        m_vertices[_vertex] = _position;
     }
 
-    void CalculateForces(Spring _spring)
+    public void DisplaceVertex(int _vertex, Vector3 _displacement)
     {
-        Vector3 massA = m_vertices[m_masses[_spring.massA].vertex];
-        Vector3 massB = m_vertices[m_masses[_spring.massB].vertex];
-
-        //Calculates spring force using hooke's law	
-        float massDistance = Vector3.Distance(massB, massA); // dl
-        float springForce = m_springCoefficient * (massDistance - _spring.equilibriumDistance); // f = k * (dl - il)
-        Vector3 forceVector = Vector3.Normalize(massB - massA) * springForce; // r
-
-        //Adds force to both masses
-        m_masses[_spring.massA].force += forceVector;
-        m_masses[_spring.massB].force -= forceVector;
+        m_vertices[_vertex] += _displacement;
     }
 
-    void CalculateDisplacement(Mass _mass)
-    {
-        _mass.force += m_globalForce;
-        _mass.velocity = (_mass.velocity + (_mass.force * Time.deltaTime));
-        _mass.velocity -= m_dragCoefficient * _mass.velocity;
-        _mass.force = Vector3.zero;
-    }
-
-    void ApplyDisplacement(Mass _mass)
-    {
-        if (!_mass.m_fixed)
-        {
-            m_vertices[_mass.vertex] += _mass.velocity * Time.deltaTime;
-        }
-    }
-
-    void UpdateMesh()
+    public void UpdateMesh()
     {
         m_mesh.Clear();
         m_mesh.vertices = m_vertices.ToArray();
