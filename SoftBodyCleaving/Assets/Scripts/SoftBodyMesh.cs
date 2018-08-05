@@ -173,11 +173,11 @@ public class SoftBodyMesh : MonoBehaviour
 
     private void CreateMass(int _vertex)
     {
-        m_masses.Add(new Mass(this, _vertex, m_masses.Count, (m_vertices[_vertex].y > m_fixMassHeight)));
+        m_masses.Add(new Mass(this, _vertex, m_masses.Count, ((m_vertices[_vertex].y - transform.position.y) > m_fixMassHeight)));
 
         if(m_highlightMasses)
         {
-            Instantiate(m_highlightObject, m_vertices[_vertex], Quaternion.identity, transform);
+            Instantiate(m_highlightObject, m_vertices[_vertex] + transform.position, transform.rotation, transform);
         }
     }
 
