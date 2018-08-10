@@ -15,7 +15,6 @@ public class ManualPlaneMeshGenerator : MonoBehaviour
     private List<Color> m_colours = new List<Color>();
     private List<int> m_triangles = new List<int>();
 
-    private float m_totalLineLength = 1.0f;
     public Color m_colour;
     public Vector3Int m_sections;
     public Vector3Int m_dimensions;

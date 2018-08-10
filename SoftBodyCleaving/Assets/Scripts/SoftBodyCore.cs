@@ -20,6 +20,8 @@ public class SoftBodyCore : MonoBehaviour
         public int resultantForceZ;
     }
 
+    private const int THREADSPERPASS = 5;
+
     public ComputeShader m_gpuSoftBody;
     public SoftBodyMesh m_softBody;
 
@@ -34,6 +36,7 @@ public class SoftBodyCore : MonoBehaviour
     private int m_displacementKernel;
 
     private bool m_initialised = false;
+    private bool m_enabled = true;
 
     private void OnDestroy()
     {
@@ -60,24 +63,44 @@ public class SoftBodyCore : MonoBehaviour
 
     private void GenerateGPUData()
     {
-        m_masses = new GPUMass[m_softBody.m_masses.Count];
+        m_masses = new GPUMass[m_softBody.m_masses.Count + m_softBody.m_masses.Count % THREADSPERPASS];
         for (int massIter = 0; massIter < m_softBody.m_masses.Count; massIter++)
         {
             m_masses[massIter] = new GPUMass();
-            m_masses[massIter].position = m_softBody.GetVertex(m_softBody.m_masses[massIter].vertex);
+            m_masses[massIter].position = m_softBody.transform.TransformPoint(
+                m_softBody.GetVertex(m_softBody.m_masses[massIter].vertexGroup.m_vertices[0]));
             m_masses[massIter].velocity = Vector3.zero;
             m_masses[massIter].resultantForceX = 0;
             m_masses[massIter].resultantForceY = 0;
             m_masses[massIter].resultantForceZ = 0;
         }
 
-        m_springs = new GPUSpring[m_softBody.m_springs.Count];
+        for (int massPadding = m_softBody.m_masses.Count; massPadding < m_softBody.m_masses.Count % THREADSPERPASS; massPadding++)
+        {
+            m_masses[massPadding] = new GPUMass();
+            m_masses[massPadding].position = Vector3.zero;
+            m_masses[massPadding].velocity = Vector3.zero;
+            m_masses[massPadding].resultantForceX = 0;
+            m_masses[massPadding].resultantForceY = 0;
+            m_masses[massPadding].resultantForceZ = 0;
+        }
+
+        m_springs = new GPUSpring[m_softBody.m_springs.Count + m_softBody.m_springs.Count % THREADSPERPASS];
         for (int springIter = 0; springIter < m_softBody.m_springs.Count; springIter++)
         {
             m_springs[springIter] = new GPUSpring();
             m_springs[springIter].massA = (uint)m_softBody.m_springs[springIter].massA;
             m_springs[springIter].massB = (uint)m_softBody.m_springs[springIter].massB;
             m_springs[springIter].equilibriumDistance = m_softBody.m_springs[springIter].equilibriumDistance;
+        }
+
+        for (int springPadding = m_softBody.m_springs.Count; springPadding < m_softBody.m_springs.Count % THREADSPERPASS; springPadding++)
+        {
+            m_springs[springPadding] = new GPUSpring();
+            m_springs[springPadding].massA = 0;
+            m_springs[springPadding].massB = 0;
+            m_springs[springPadding].equilibriumDistance = 0;
+
         }
     }
 
@@ -104,21 +127,13 @@ public class SoftBodyCore : MonoBehaviour
 
     private void Update()
     {
-        if (m_initialised)
+        if (m_initialised && m_enabled)
         {
             GlobalForces.s_instance.CalculateGlobalForces();
 
+            UpdateVariables();
+
             DispatchShader();
-
-            //for (int springIter = 0; springIter < m_softBody.m_springs.Count; springIter++)
-            //{
-            //    CalculateForces(m_softBody.m_springs[springIter]);
-            //}
-
-            //for (int massIter = 0; massIter < m_softBody.m_masses.Count; massIter++)
-            //{
-            //    CalculateDisplacement(m_softBody.m_masses[massIter]);
-            //}
 
             for (int massIter = 0; massIter < m_softBody.m_masses.Count; massIter++)
             {
@@ -130,19 +145,10 @@ public class SoftBodyCore : MonoBehaviour
         }
     }
 
-    void CalculateForces(Spring _spring)
+    private void UpdateVariables()
     {
-        Vector3 massA = m_softBody.GetVertex(m_softBody.m_masses[_spring.massA].vertex);
-        Vector3 massB = m_softBody.GetVertex(m_softBody.m_masses[_spring.massB].vertex);
-
-        //Calculates spring force using hooke's law	
-        float massDistance = Vector3.Distance(massB, massA); // dl
-        float springForce = m_softBody.m_springCoefficient * (massDistance - _spring.equilibriumDistance); // f = k * (dl - il)
-        Vector3 forceVector = Vector3.Normalize(massB - massA) * springForce; // r
-
-        //Adds force to both masses
-        m_softBody.m_masses[_spring.massA].force += forceVector;
-        m_softBody.m_masses[_spring.massB].force -= forceVector;
+        m_gpuSoftBody.SetFloat("springCoefficient", m_softBody.m_springCoefficient);
+        m_gpuSoftBody.SetFloat("dragCoefficient", m_softBody.m_dragCoefficient);
     }
 
     void DispatchShader()
@@ -152,9 +158,9 @@ public class SoftBodyCore : MonoBehaviour
         m_gpuSoftBody.SetFloat("deltaTime", Time.deltaTime);
         m_gpuSoftBody.SetVector("globalForce", GlobalForces.s_instance.m_globalForce);
 
-        m_gpuSoftBody.Dispatch(m_clearKernel, m_masses.Length / 5, 1, 1);
-        m_gpuSoftBody.Dispatch(m_calculateKernel, m_springs.Length / 5, 1, 1);
-        m_gpuSoftBody.Dispatch(m_displacementKernel, m_masses.Length / 5, 1, 1);
+        m_gpuSoftBody.Dispatch(m_clearKernel, m_masses.Length / THREADSPERPASS, 1, 1);
+        m_gpuSoftBody.Dispatch(m_calculateKernel, m_springs.Length / THREADSPERPASS, 1, 1);
+        m_gpuSoftBody.Dispatch(m_displacementKernel, m_masses.Length / THREADSPERPASS, 1, 1);
 
         UpdateCPUMasses();
     }
@@ -163,7 +169,7 @@ public class SoftBodyCore : MonoBehaviour
     {
         for (int massIter = 0; massIter < m_softBody.m_masses.Count; massIter++)
         {
-            m_masses[massIter].position = m_softBody.GetVertex(m_softBody.m_masses[massIter].vertex);
+            m_masses[massIter].position = m_softBody.GetVertex(m_softBody.m_masses[massIter].vertexGroup.m_vertices[0]);
         }
         m_massBuffer.SetData(m_masses);
     }
@@ -177,19 +183,16 @@ public class SoftBodyCore : MonoBehaviour
         }
     }
 
-    void CalculateDisplacement(Mass _mass)
-    {
-        _mass.force += GlobalForces.s_instance.m_globalForce;
-        _mass.velocity = _mass.velocity + (_mass.force * Time.deltaTime);
-        _mass.velocity -= m_softBody.m_dragCoefficient * _mass.velocity;
-        _mass.force = Vector3.zero;
-    }
-
     void ApplyDisplacement(Mass _mass)
     {
         if (!_mass.m_fixed)
         {
-            m_softBody.DisplaceVertex(_mass.vertex, _mass.velocity * Time.deltaTime);
+            m_softBody.DisplaceVertex(_mass.vertexGroup, _mass.velocity * Time.deltaTime);
         }
+    }
+
+    public void SetEnabled(bool _state)
+    {
+        m_enabled = _state;
     }
 }

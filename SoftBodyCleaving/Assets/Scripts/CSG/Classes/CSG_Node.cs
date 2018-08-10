@@ -88,43 +88,51 @@ namespace Parabox.CSG
 		// (no heuristic is used to pick a good split).
 		public void Build(List<CSG_Polygon> list)
 		{
-			if (list.Count < 1)
-				return;
+                if (list.Count < 1)
+                    return;
 
-			if (this.plane == null || !this.plane.Valid())
-			{
-				this.plane = new CSG_Plane();
-				this.plane.normal = list[0].plane.normal;
-				this.plane.w = list[0].plane.w;
-			}
+                if (this.plane == null || !this.plane.Valid())
+                {
+                    this.plane = new CSG_Plane();
+                    this.plane.normal = list[0].plane.normal;
+                    this.plane.w = list[0].plane.w;
+                }
 
 
-			if(this.polygons == null)
-				this.polygons = new List<CSG_Polygon>();
+                if (this.polygons == null)
+                    this.polygons = new List<CSG_Polygon>();
 
-			List<CSG_Polygon> list_front = new List<CSG_Polygon>();
-			List<CSG_Polygon> list_back = new List<CSG_Polygon>();
+                List<CSG_Polygon> list_front = new List<CSG_Polygon>();
+                List<CSG_Polygon> list_back = new List<CSG_Polygon>();
 
-			for (int i = 0; i < list.Count; i++) 
-			{
-				this.plane.SplitPolygon(list[i], this.polygons, this.polygons, list_front, list_back);
-			}
+                for (int i = 0; i < list.Count; i++)
+                {
+                    this.plane.SplitPolygon(list[i], this.polygons, this.polygons, list_front, list_back);
+                }
 
-			if (list_front.Count > 0) 
-			{
-				if (this.front == null)
-					this.front = new CSG_Node();
+            try
+            {
+                if (list_front.Count > 0)
+                {
+                    if (this.front == null)
+                        this.front = new CSG_Node();
 
-				this.front.Build(list_front);
-			}
+                    this.front.Build(list_front);
+                }
+            }
+            catch (System.StackOverflowException ex)
+            {
+                Debug.Log("StackOverFlow");
+                return;
+            }
 
-			if (list_back.Count > 0) 
-			{
-				if (this.back == null)
-					this.back = new CSG_Node();
+            if (list_back.Count > 0)
+                {
+                    if (this.back == null)
+                        this.back = new CSG_Node();
 
-				this.back.Build(list_back);
-			}
+                    this.back.Build(list_back);
+                }
 		}
 
 		// Recursively remove all polygons in `polygons` that are inside this BSP
