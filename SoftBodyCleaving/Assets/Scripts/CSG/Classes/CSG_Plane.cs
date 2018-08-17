@@ -6,7 +6,7 @@ namespace Parabox.CSG
 	/**
 	 * Represents a plane in 3d space.  Does not include position.
 	 */
-	class CSG_Plane
+	public class CSG_Plane
 	{
 		public Vector3 normal;
 		public float w;
@@ -57,7 +57,7 @@ namespace Parabox.CSG
 
 			for (int i = 0; i < polygon.vertices.Count; i++) 
 			{
-				float t = Vector3.Dot(this.normal, polygon.vertices[i].position) - this.w;
+				float t = Vector3.Dot(this.normal, polygon.vertices[i].m_position) - this.w;
 				EPolygonType type = (t < -CSG.EPSILON) ? EPolygonType.Back : ((t > CSG.EPSILON) ? EPolygonType.Front : EPolygonType.Coplanar);
 				polygonType |= type;
 				types.Add(type);
@@ -112,7 +112,7 @@ namespace Parabox.CSG
 
 						if ((ti | tj) == EPolygonType.Spanning) 
 						{
-							float t = (this.w - Vector3.Dot(this.normal, vi.position)) / Vector3.Dot(this.normal, vj.position - vi.position);
+							float t = (this.w - Vector3.Dot(this.normal, vi.m_position)) / Vector3.Dot(this.normal, vj.m_position - vi.m_position);
 							
 							CSG_Vertex v = CSG_Vertex.Interpolate(vi, vj, t);
 

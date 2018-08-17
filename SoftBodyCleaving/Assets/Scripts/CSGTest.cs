@@ -1,4 +1,4 @@
-﻿using System.Collections;
+﻿using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -13,7 +13,7 @@ public class CSGTest : MonoBehaviour
 {
     public GameObject objectA;
     public GameObject objectB;
-    public GameObject composite;
+    public List<GameObject> composites;
 
     public ProcessState m_state = ProcessState.Waiting;
     public ComputeShader m_gpuSoftBody;
@@ -57,19 +57,16 @@ public class CSGTest : MonoBehaviour
                 }
             case ProcessState.Processing:
                 {
-                    composite = new GameObject();
-                    MeshFilter filter = composite.AddComponent<MeshFilter>();
-                    filter.sharedMesh = Parabox.CSG.CSG.Subtract(objectA, objectB);
-                    composite.AddComponent<MeshRenderer>().sharedMaterial = objectA.GetComponent<MeshRenderer>().sharedMaterial;
+                    List<Mesh> resultantMeshes = Parabox.CSG.CSG.Subtract(objectA, objectB);
+                    for (int meshIter = 0; meshIter < resultantMeshes.Count; meshIter++)
+                    {
+                        CreateObjectFromMesh(resultantMeshes[meshIter]);
+                    }
 
-                    //SoftBodyCore core = composite.AddComponent<SoftBodyCore>();
-                    //SoftBodyMesh mesh = composite.AddComponent<SoftBodyMesh>();
-
-                    //core.m_softBody = mesh;
-                    //core.m_gpuSoftBody = m_gpuSoftBody;
-
-                    //mesh.m_core = core;
-                    //mesh.m_meshFilter = filter;
+                    for (int meshIter = 0; meshIter < composites.Count; meshIter++)
+                    {
+                        Parabox.CSG.CSG.RealignMeshToAveragePosition(composites[meshIter]);
+                    }
 
                     GameObject.Destroy(objectA);
                     GameObject.Destroy(objectB);
@@ -78,5 +75,13 @@ public class CSGTest : MonoBehaviour
                     break;
                 }
         }
+    }
+
+    private void CreateObjectFromMesh(Mesh _mesh)
+    {
+        composites.Add(new GameObject());
+        MeshFilter filter = composites.Last().AddComponent<MeshFilter>();
+        filter.sharedMesh = _mesh;
+        composites.Last().AddComponent<MeshRenderer>().sharedMaterial = objectA.GetComponent<MeshRenderer>().sharedMaterial;
     }
 }

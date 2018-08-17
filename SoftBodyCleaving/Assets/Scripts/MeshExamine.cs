@@ -10,9 +10,12 @@ public class MeshExamine : MonoBehaviour {
 
     private void Update()
     {
-        m_vertices = m_mesh.sharedMesh.vertices;
-        m_indices = m_mesh.sharedMesh.triangles;
-        m_mesh.sharedMesh.RecalculateNormals();
-        m_normals = m_mesh.sharedMesh.normals;
+        if (m_mesh)
+        {
+            m_vertices = m_mesh.sharedMesh.vertices;
+            m_indices = m_mesh.sharedMesh.triangles;
+            m_mesh.sharedMesh.RecalculateNormals();
+            m_normals = m_mesh.sharedMesh.normals;
+        }
     }
 }

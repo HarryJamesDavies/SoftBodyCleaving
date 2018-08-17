@@ -48,7 +48,7 @@ namespace Parabox.CSG
 		/**
 		 * Returns a new mesh by subtracting @rhs from @lhs.
 		 */
-		public static Mesh Subtract(GameObject lhs, GameObject rhs)
+		public static List<Mesh> Subtract(GameObject lhs, GameObject rhs)
 		{
 			CSG_Model csg_model_a = new CSG_Model(lhs);
 			CSG_Model csg_model_b = new CSG_Model(rhs);
@@ -58,9 +58,21 @@ namespace Parabox.CSG
 
 			List<CSG_Polygon> polygons = CSG_Node.Subtract(a, b).AllPolygons();
 
+            List<Mesh> resultantMeshes = new List<Mesh>();
 			CSG_Model result = new CSG_Model(polygons);
+            if(result.SubDivideMesh())
+            {
+                for (int subMeshIter = 0; subMeshIter < result.m_subModels.Count; subMeshIter++)
+                {
+                    resultantMeshes.Add(result.m_subModels[subMeshIter].ToMesh());
+                }
+            }
+            else
+            {
+                resultantMeshes.Add(result.ToMesh());
+            }
 
-			return result.ToMesh();
+			return resultantMeshes;
 		}
 
 		/**
@@ -81,5 +93,26 @@ namespace Parabox.CSG
 
 			return result.ToMesh();
 		}
+
+        public static void RealignMeshToAveragePosition(GameObject _object)
+        {
+            MeshFilter filter = _object.GetComponent<MeshFilter>();
+
+            Vector3 averagePosition = Vector3.zero;
+            for (int vertexIter = 0; vertexIter < filter.sharedMesh.vertexCount; vertexIter++)
+            {
+                averagePosition += filter.sharedMesh.vertices[vertexIter];
+            }
+            averagePosition /= filter.sharedMesh.vertexCount;
+
+            //Vector3 transformDelta = averagePosition - _object.transform.position;
+
+            //for (int vertexIter = 0; vertexIter < filter.sharedMesh.vertexCount; vertexIter++)
+            //{
+            //    filter.sharedMesh.vertices[vertexIter] += transformDelta;
+            //}
+
+            _object.transform.position = averagePosition;
+        }
 	}
 }

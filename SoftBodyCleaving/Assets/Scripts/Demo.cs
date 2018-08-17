@@ -89,34 +89,34 @@ public class Demo : MonoBehaviour
 		 * Order matters - left, right vs. right, left will yield different
 		 * results in some cases.
 		 */
-		switch(operation)
-		{
-			case BoolOp.Union:
-				m = CSG.Union(left, right);
-				break;
+		//switch(operation)
+		//{
+		//	case BoolOp.Union:
+		//		m = CSG.Union(left, right);
+		//		break;
 
-			case BoolOp.SubtractLR:
-				m = CSG.Subtract(left, right);
-				break;
+		//	case BoolOp.SubtractLR:
+		//		m = CSG.Subtract(left, right);
+		//		break;
 
-			case BoolOp.SubtractRL:
-				m = CSG.Subtract(right, left);
-				break;
+		//	case BoolOp.SubtractRL:
+		//		m = CSG.Subtract(right, left);
+		//		break;
 
-			case BoolOp.Intersect:
-			default:
-				m = CSG.Intersect(right,left);
-				break;
-		}
+		//	case BoolOp.Intersect:
+		//	default:
+		//		m = CSG.Intersect(right,left);
+		//		break;
+		//}
 
-		composite = new GameObject();
-		composite.AddComponent<MeshFilter>().sharedMesh = m;
-		composite.AddComponent<MeshRenderer>().sharedMaterial = left.GetComponent<MeshRenderer>().sharedMaterial;
+		//composite = new GameObject();
+		//composite.AddComponent<MeshFilter>().sharedMesh = m;
+		//composite.AddComponent<MeshRenderer>().sharedMaterial = left.GetComponent<MeshRenderer>().sharedMaterial;
 
-		GenerateBarycentric( composite );
+		//GenerateBarycentric( composite );
 
-		GameObject.Destroy(left);
-		GameObject.Destroy(right);
+		//GameObject.Destroy(left);
+		//GameObject.Destroy(right);
 	}
 
 	/**

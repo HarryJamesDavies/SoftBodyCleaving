@@ -6,7 +6,7 @@ namespace Parabox.CSG
 	/**
 	 * Represents a polygon face with an arbitrary number of vertices.
 	 */
-	class CSG_Polygon
+	public class CSG_Polygon
 	{
 		public List<CSG_Vertex> vertices;
 		public CSG_Plane plane;
@@ -14,7 +14,7 @@ namespace Parabox.CSG
 		public CSG_Polygon(List<CSG_Vertex> list)
 		{
 			this.vertices = list;
-			this.plane = new CSG_Plane(list[0].position, list[1].position, list[2].position);
+			this.plane = new CSG_Plane(list[0].m_position, list[1].m_position, list[2].m_position);
 		}
 
 		public void Flip()

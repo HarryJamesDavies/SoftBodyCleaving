@@ -5,24 +5,35 @@ namespace Parabox.CSG
 	/**
 	 * Represents a single mesh vertex.  Contains fields for position, color, normal, and textures.
 	 */
-	struct CSG_Vertex
+	public class CSG_Vertex
 	{
-		public Vector3 position;
-		public Color color;
-		public Vector3 normal;
-		public Vector2 uv;
+		public Vector3 m_position;
+		public Color m_color;
+		public Vector3 m_normal;
+        public Vector3 m_sharedNormal;
+		public Vector2 m_uv;
 
-		public CSG_Vertex(Vector3 position, Vector3 normal, Vector2 uv, Color color)
+        public CSG_Vertex()
+        {
+            m_position = Vector3.zero;
+            m_color = Color.white;
+            m_normal = Vector3.up;
+            m_sharedNormal = Vector3.up;
+            m_uv = Vector2.one;
+        }
+
+		public CSG_Vertex(Vector3 _position, Vector3 _normal, Vector2 _uv, Color _color)
 		{
-			this.position = position;
-			this.normal = normal;
-			this.uv = uv;
-			this.color = color;
+			m_position = _position;
+            m_sharedNormal = _normal;
+            m_normal = m_sharedNormal.normalized;
+			m_uv = _uv;
+			m_color = _color;
 		}
 
 		public void Flip()
 		{
-			normal *= -1f;
+			m_normal *= -1f;
 		}
 
 		// Create a new vertex between this vertex and `other` by linearly
@@ -32,12 +43,33 @@ namespace Parabox.CSG
 		{
 			CSG_Vertex ret = new CSG_Vertex();
 
-			ret.position = Vector3.Lerp(a.position, b.position, t);
-			ret.normal = Vector3.Lerp(a.normal, b.normal, t);
-			ret.uv = Vector2.Lerp(a.uv, b.uv, t);
-			ret.color = (a.color + b.color) / 2f;
+			ret.m_position = Vector3.Lerp(a.m_position, b.m_position, t);
+			ret.m_normal = Vector3.Lerp(a.m_normal, b.m_normal, t);
+			ret.m_uv = Vector2.Lerp(a.m_uv, b.m_uv, t);
+			ret.m_color = (a.m_color + b.m_color) / 2f;
 
 			return ret;
 		}
+
+        /// <summary>
+        /// Normal must be normalised first
+        /// </summary>
+        /// <param name="_normal"></param>
+        public void AddToSharedNormal(Vector3 _normal)
+        {
+            m_sharedNormal += _normal;
+            m_normal = m_sharedNormal.normalized;
+        }
+
+        public void SetNormal(Vector3 _normal)
+        {
+            m_sharedNormal = _normal;
+            m_normal = m_sharedNormal.normalized;
+        }
+
+        public void SetPosition(Vector3 _position)
+        {
+            m_position.Set(_position.x, _position.y, _position.z);
+        }
 	}
 }

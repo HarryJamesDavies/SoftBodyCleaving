@@ -40,9 +40,12 @@ public class SoftBodyCore : MonoBehaviour
 
     private void OnDestroy()
     {
-        m_massBuffer.Release();
-        
-        m_springBuffer.Release();
+        if (m_initialised)
+        {
+            m_massBuffer.Release();
+
+            m_springBuffer.Release();
+        }
     }
 
     public void OnMeshGenerated(SoftBodyMesh _mesh)
