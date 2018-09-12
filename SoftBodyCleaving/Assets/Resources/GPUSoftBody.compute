@@ -12,6 +12,7 @@ struct Spring
 struct Mass
 {
 	float3 position;
+	float3 normal;
 	float3 velocity;
 	int resultantForceX;
 	int resultantForceY;
@@ -22,8 +23,10 @@ float deltaTime;
 
 float3 globalForce;
 
+int capSpringForce;
 float springCoefficient;
 float dragCoefficient;
+float pressureCoefficient;
 
 RWStructuredBuffer<Mass> masses;
 StructuredBuffer<Spring> springs;
@@ -47,9 +50,10 @@ void CalculateForces(uint3 id : SV_DispatchThreadID)
 	float springMagnitude = springCoefficient * (massDistance - springs[id.x].equilibriumDistance); // f = k * (dl - il)
 	int3 springForce = normalize(massB.position - massA.position) * springMagnitude; // r
 
-	int forceX = springForce.x;
-	int forceY = springForce.y;
-	int forceZ = springForce.z;
+	int forceX = clamp(springForce.x, -capSpringForce, capSpringForce);
+	int forceY = clamp(springForce.y, -capSpringForce, capSpringForce);
+	int forceZ = clamp(springForce.z, -capSpringForce, capSpringForce);
+
 
 	//Adds force to both masses
 	InterlockedAdd(masses[springs[id.x].massA].resultantForceX, forceX);
@@ -64,8 +68,11 @@ void CalculateForces(uint3 id : SV_DispatchThreadID)
 [numthreads(5, 1, 1)]
 void CalculateDisplacement(uint3 id : SV_DispatchThreadID)
 {
-	float3 force = float3(masses[id.x].resultantForceX + globalForce.x,
-		masses[id.x].resultantForceY + globalForce.y, masses[id.x].resultantForceZ + globalForce.z);
+	float3 force = float3(masses[id.x].resultantForceX,
+		masses[id.x].resultantForceY, masses[id.x].resultantForceZ);
+	force += globalForce;
+	force += masses[id.x].normal * pressureCoefficient;
+
 	masses[id.x].velocity = masses[id.x].velocity + (force * deltaTime);
 	masses[id.x].velocity -= dragCoefficient * masses[id.x].velocity;
 

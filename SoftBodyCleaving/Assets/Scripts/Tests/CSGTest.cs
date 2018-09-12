@@ -1,6 +1,7 @@
 ﻿using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
+using CSG;
 
 public enum ProcessState
 {
@@ -14,15 +15,14 @@ public class CSGTest : MonoBehaviour
     public GameObject objectA;
     public GameObject objectB;
     public List<GameObject> composites;
+    
+    private ProcessState m_state = ProcessState.Waiting;
 
-    public ProcessState m_state = ProcessState.Waiting;
-    public ComputeShader m_gpuSoftBody;
     private bool m_active = false;
 
     void OnEnable ()
     {
         m_active = true;
-        Debug.Log("Active");
     }
 
     private void Update()
@@ -57,31 +57,41 @@ public class CSGTest : MonoBehaviour
                 }
             case ProcessState.Processing:
                 {
-                    List<Mesh> resultantMeshes = Parabox.CSG.CSG.Subtract(objectA, objectB);
+                    List<Mesh> resultantMeshes = CSG.CSG.Subtract(objectA, objectB);
+
+                    List<GameObject> resultantObjects = new List<GameObject>();
+
                     for (int meshIter = 0; meshIter < resultantMeshes.Count; meshIter++)
                     {
-                        CreateObjectFromMesh(resultantMeshes[meshIter]);
+                        resultantObjects.Add(CreateObjectFromMesh(resultantMeshes[meshIter]));
                     }
 
-                    for (int meshIter = 0; meshIter < composites.Count; meshIter++)
-                    {
-                        Parabox.CSG.CSG.RealignMeshToAveragePosition(composites[meshIter]);
-                    }
+                    //for (int meshIter = 0; meshIter < composites.Count; meshIter++)
+                    //{
+                    //    CSG.CSG.RealignMeshToAveragePosition(composites[meshIter]);
+                    //}
 
-                    GameObject.Destroy(objectA);
-                    GameObject.Destroy(objectB);
+                    Destroy(objectA);
+                    Destroy(objectB);
 
                     m_state = ProcessState.Waiting;
+
+                    for (int resultantObjectIter = 0; resultantObjectIter < resultantObjects.Count; resultantObjectIter++)
+                    {
+                        MSM.MSM.MakeObjectSoftbody3D(resultantObjects[resultantObjectIter]);
+                    }
+                    
                     break;
                 }
         }
     }
 
-    private void CreateObjectFromMesh(Mesh _mesh)
+    private GameObject CreateObjectFromMesh(Mesh _mesh)
     {
         composites.Add(new GameObject());
         MeshFilter filter = composites.Last().AddComponent<MeshFilter>();
         filter.sharedMesh = _mesh;
         composites.Last().AddComponent<MeshRenderer>().sharedMaterial = objectA.GetComponent<MeshRenderer>().sharedMaterial;
+        return composites.Last();
     }
 }

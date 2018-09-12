@@ -14,6 +14,7 @@ public class SoftBodyCore : MonoBehaviour
     struct GPUMass
     {
         public Vector3 position;
+        public Vector3 normal;
         public Vector3 velocity;
         public int resultantForceX;
         public int resultantForceY;
@@ -22,8 +23,8 @@ public class SoftBodyCore : MonoBehaviour
 
     private const int THREADSPERPASS = 5;
 
-    public ComputeShader m_gpuSoftBody;
     public SoftBodyMesh m_softBody;
+    private ComputeShader m_gpuSoftBody;
 
     private ComputeBuffer m_massBuffer;
     private ComputeBuffer m_springBuffer;
@@ -35,12 +36,12 @@ public class SoftBodyCore : MonoBehaviour
     private int m_calculateKernel;
     private int m_displacementKernel;
 
-    private bool m_initialised = false;
+    private bool m_initialise = false;
     private bool m_enabled = true;
 
     private void OnDestroy()
     {
-        if (m_initialised)
+        if (m_initialise)
         {
             m_massBuffer.Release();
 
@@ -48,19 +49,20 @@ public class SoftBodyCore : MonoBehaviour
         }
     }
 
-    public void OnMeshGenerated(SoftBodyMesh _mesh)
+    public void Initialise(SoftBodyMesh _mesh)
     {
         m_softBody = _mesh;
+        m_gpuSoftBody = ComputeShader.Instantiate(Resources.Load<ComputeShader>("GPUSoftBody"));
 
         if (m_softBody)
         {
             GenerateGPUData();
             SetupShader();
-            m_initialised = true;
+            m_initialise = true;
         }
         else
         {
-            m_initialised = false;
+            m_initialise = false;
         }
     }
 
@@ -109,13 +111,16 @@ public class SoftBodyCore : MonoBehaviour
 
     private void SetupShader()
     {
-        m_massBuffer = new ComputeBuffer(m_masses.Length, 36);
+        m_massBuffer = new ComputeBuffer(m_masses.Length, 48);
         m_massBuffer.SetData(m_masses);
         m_springBuffer = new ComputeBuffer(m_springs.Length, 12);
         m_springBuffer.SetData(m_springs);
 
+        m_gpuSoftBody.SetFloat("capSpringForce", m_softBody.m_capSpringForce);
         m_gpuSoftBody.SetFloat("springCoefficient", m_softBody.m_springCoefficient);
         m_gpuSoftBody.SetFloat("dragCoefficient", m_softBody.m_dragCoefficient);
+        m_gpuSoftBody.SetFloat("pressureCoefficient", (m_softBody.m_usePressure) ? 
+            m_softBody.m_pressureCoefficient : 0.0f);
 
         m_clearKernel = m_gpuSoftBody.FindKernel("ClearForces");
         m_gpuSoftBody.SetBuffer(m_clearKernel, "masses", m_massBuffer);
@@ -130,7 +135,7 @@ public class SoftBodyCore : MonoBehaviour
 
     private void Update()
     {
-        if (m_initialised && m_enabled)
+        if (m_initialise && m_enabled)
         {
             GlobalForces.s_instance.CalculateGlobalForces();
 
@@ -150,8 +155,11 @@ public class SoftBodyCore : MonoBehaviour
 
     private void UpdateVariables()
     {
+        m_gpuSoftBody.SetFloat("capSpringForce", m_softBody.m_capSpringForce);
         m_gpuSoftBody.SetFloat("springCoefficient", m_softBody.m_springCoefficient);
         m_gpuSoftBody.SetFloat("dragCoefficient", m_softBody.m_dragCoefficient);
+        m_gpuSoftBody.SetFloat("pressureCoefficient", (m_softBody.m_usePressure) ?
+            m_softBody.m_pressureCoefficient : 0.0f);
     }
 
     void DispatchShader()
@@ -173,6 +181,7 @@ public class SoftBodyCore : MonoBehaviour
         for (int massIter = 0; massIter < m_softBody.m_masses.Count; massIter++)
         {
             m_masses[massIter].position = m_softBody.GetVertex(m_softBody.m_masses[massIter].vertexGroup.m_vertices[0]);
+            m_masses[massIter].normal = m_softBody.m_masses[massIter].vertexGroup.m_sharedNormal;
         }
         m_massBuffer.SetData(m_masses);
     }

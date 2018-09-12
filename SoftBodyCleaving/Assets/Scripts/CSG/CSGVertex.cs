@@ -1,11 +1,8 @@
 using UnityEngine;
 
-namespace Parabox.CSG
+namespace CSG
 {
-	/**
-	 * Represents a single mesh vertex.  Contains fields for position, color, normal, and textures.
-	 */
-	public class CSG_Vertex
+	public class CSGVertex
 	{
 		public Vector3 m_position;
 		public Color m_color;
@@ -13,7 +10,7 @@ namespace Parabox.CSG
         public Vector3 m_sharedNormal;
 		public Vector2 m_uv;
 
-        public CSG_Vertex()
+        public CSGVertex()
         {
             m_position = Vector3.zero;
             m_color = Color.white;
@@ -22,7 +19,7 @@ namespace Parabox.CSG
             m_uv = Vector2.one;
         }
 
-		public CSG_Vertex(Vector3 _position, Vector3 _normal, Vector2 _uv, Color _color)
+		public CSGVertex(Vector3 _position, Vector3 _normal, Vector2 _uv, Color _color)
 		{
 			m_position = _position;
             m_sharedNormal = _normal;
@@ -36,19 +33,16 @@ namespace Parabox.CSG
 			m_normal *= -1f;
 		}
 
-		// Create a new vertex between this vertex and `other` by linearly
-		// interpolating all properties using a parameter of `t`. Subclasses should
-		// override this to interpolate additional properties.
-		public static CSG_Vertex Interpolate(CSG_Vertex a, CSG_Vertex b, float t)
+		public static CSGVertex Interpolate(CSGVertex _vertexA, CSGVertex _vertexB, float _step)
 		{
-			CSG_Vertex ret = new CSG_Vertex();
+			CSGVertex result = new CSGVertex();
 
-			ret.m_position = Vector3.Lerp(a.m_position, b.m_position, t);
-			ret.m_normal = Vector3.Lerp(a.m_normal, b.m_normal, t);
-			ret.m_uv = Vector2.Lerp(a.m_uv, b.m_uv, t);
-			ret.m_color = (a.m_color + b.m_color) / 2f;
+            result.m_position = Vector3.Lerp(_vertexA.m_position, _vertexB.m_position, _step);
+            result.m_normal = Vector3.Lerp(_vertexA.m_normal, _vertexB.m_normal, _step);
+            result.m_uv = Vector2.Lerp(_vertexA.m_uv, _vertexB.m_uv, _step);
+            result.m_color = (_vertexA.m_color + _vertexB.m_color) / 2f;
 
-			return ret;
+			return result;
 		}
 
         /// <summary>
