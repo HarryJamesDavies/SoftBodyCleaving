@@ -70,11 +70,11 @@ public class SoftBodyMesh : MonoBehaviour
         }
     }
 
-    public void Create1DSoftBodyFromGroups(List<VertexGroup> _vertexGroups)
+    public void Create1DSoftBodyFromGroups(Chain _chain)
     {
         if (m_meshFilter.sharedMesh != null)
         {
-            m_vertexGroups.AddRange(_vertexGroups);
+            m_vertexGroups.AddRange(_chain.m_vertexGroups);
             m_usePressure = false;
 
             GetData();
@@ -370,7 +370,14 @@ public class SoftBodyMesh : MonoBehaviour
     {
         for (int vertexIter = 0; vertexIter < _group.m_vertices.Count; vertexIter++)
         {
-            m_vertices[_group.m_vertices[vertexIter]] += _displacement;
+            try
+            {
+                m_vertices[_group.m_vertices[vertexIter]] += _displacement;
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                Debug.Log("Warning");
+            }
         }
     }
 

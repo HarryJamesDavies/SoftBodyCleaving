@@ -6,11 +6,11 @@ namespace MSM
 {
     public class MSM
     {
-        public static void MakeObjectSoftbody1D(GameObject _object, List<VertexGroup> _groups)
+        public static void MakeObjectSoftbody1D(GameObject _object, Chain _chain)
         {
             SoftBodyMesh mesh = _object.AddComponent<SoftBodyMesh>();
             mesh.Initialise(_object.GetComponent<MeshFilter>());
-            mesh.Create1DSoftBodyFromGroups(_groups);
+            mesh.Create1DSoftBodyFromGroups(_chain);
 
             SoftBodyCore core = _object.AddComponent<SoftBodyCore>();
             core.Initialise(mesh);

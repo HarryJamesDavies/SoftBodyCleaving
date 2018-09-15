@@ -13,15 +13,16 @@ public class ChainGenerator : MonoBehaviour
     [SerializeField] private float m_faceAngle;
 
     [SerializeField] private MeshFilter m_meshFilter;
+    private Chain m_chain;
+
     private List<Vector3> m_corePoints = new List<Vector3>();
+    private List<VertexGroup> m_vertexGroups = new List<VertexGroup>();
+
+    private List<Vector3> m_vertices = new List<Vector3>();
+    private List<Vector3> m_normals = new List<Vector3>();
+    private List<int> m_triangles = new List<int>();
 
     [SerializeField] private bool m_backfaceCulling = false;
-
-    List<VertexGroup> m_vertexGroups = new List<VertexGroup>();
-    List<Vector3> m_vertices = new List<Vector3>();
-    List<Vector3> m_normals = new List<Vector3>();
-    List<int> m_triangles = new List<int>();
-
     [SerializeField] private bool m_generateSoftBody = false;
 
     void Start()
@@ -33,9 +34,11 @@ public class ChainGenerator : MonoBehaviour
             GenerateMesh();
             transform.position -= Vector3.one;
 
+            GenerateChain();
+
             if (m_generateSoftBody)
             {
-                MSM.MSM.MakeObjectSoftbody1D(gameObject, m_vertexGroups);
+                MSM.MSM.MakeObjectSoftbody1D(gameObject, m_chain);
             }
         }
     }
@@ -46,7 +49,7 @@ public class ChainGenerator : MonoBehaviour
 
         for (int sectionIter = 0; sectionIter < m_sectionCount + 1; sectionIter++)
         {
-            m_corePoints.Add(transform.position + (pointDisplacement * sectionIter));
+            m_corePoints.Add(pointDisplacement * sectionIter);
         }
     }
 
@@ -86,7 +89,7 @@ public class ChainGenerator : MonoBehaviour
 
                 //m_normals.Add(Vector3.Cross((m_vertices[vertexStart] - m_vertices[vertexStart + 1]),
                 //    (m_vertices[vertexStart] - m_vertices[vertexStart + 2])));
-                m_vertexGroups[coreIter].AddToSharedNormal(m_normals.Last());
+                //m_vertexGroups[coreIter].AddToSharedNormal(m_normals.Last());
 
                 m_triangles.Add(vertexStart + 1);
                 m_triangles.Add(vertexStart + 2);
@@ -94,7 +97,7 @@ public class ChainGenerator : MonoBehaviour
 
                 //m_normals.Add(Vector3.Cross((m_vertices[vertexStart + 1] - m_vertices[vertexStart]),
                 //    (m_vertices[vertexStart + 1] - m_vertices[vertexStart + 3])));
-                m_vertexGroups[coreIter + 1].AddToSharedNormal(m_normals.Last());
+                //m_vertexGroups[coreIter + 1].AddToSharedNormal(m_normals.Last());
             }
 
             if (!m_backfaceCulling)
@@ -144,5 +147,17 @@ public class ChainGenerator : MonoBehaviour
             m_triangles.Add(vertexStart + 1);
             m_triangles.Add(vertexStart + 3);
         }
+    }
+
+    public Vector3 GetEndPoint()
+    {
+        return transform.position + (m_lineDirection.normalized * m_lineLength);
+    }
+
+    private void GenerateChain()
+    {
+        m_chain = gameObject.AddComponent<Chain>();
+        m_chain.Initialise(m_corePoints, m_vertexGroups, m_meshFilter.sharedMesh);
+        ChainPool.s_instance.AddToPool(m_chain);
     }
 }
