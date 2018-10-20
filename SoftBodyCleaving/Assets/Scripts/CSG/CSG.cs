@@ -7,84 +7,86 @@ using System.Collections.Generic;
 
 namespace CSG
 {
-	public class CSG
-	{
-		public static Mesh Union(GameObject _objectA, GameObject _objectB)
-		{
-			CSGModel modelA = new CSGModel(_objectA);
-			CSGModel modelB = new CSGModel(_objectB);
+    public enum BooleanOperations
+    {
+        None,
+        Union,
+        Subtract,
+        Intersect
+    }
 
-			CSGNode nodeA = new CSGNode(modelA.ToPolygons() );
-			CSGNode nodeB = new CSGNode(modelB.ToPolygons() );
+    public class CSG
+    {
+        public const float EPSILON = 0.00001f;
 
-			List<CSGPolygon> polygons = CSGNode.Union(nodeA, nodeB).AllPolygons();
-
-			CSGModel result = new CSGModel(polygons);
-
-			return result.ToMesh();
-		}
-        
-		public static List<Mesh> Subtract(GameObject _objectA, GameObject _objectB)
-		{
-			CSGModel modelA = new CSGModel(_objectA);
-			CSGModel modelB = new CSGModel(_objectB);
-
-			CSGNode nodeA = new CSGNode( modelA.ToPolygons() );
-			CSGNode nodeB = new CSGNode( modelB.ToPolygons() );
-
-			List<CSGPolygon> polygons = CSGNode.Subtract(nodeA, nodeB).AllPolygons();
-
-            List<Mesh> resultantMeshes = new List<Mesh>();
-			CSGModel result = new CSGModel(polygons);
-            if (result.SubDivideMesh())
-            {
-                for (int subMeshIter = 0; subMeshIter < result.m_subModels.Count; subMeshIter++)
-                {
-                    resultantMeshes.Add(result.m_subModels[subMeshIter].ToMesh());
-                }
-            }
-            else
-            {
-                resultantMeshes.Add(result.ToMesh());
-            }
-
-            return resultantMeshes;
-		}
-        
-		public static Mesh Intersect(GameObject _objectA, GameObject _objectB)
-		{
-			CSGModel modelA = new CSGModel(_objectA);
-			CSGModel modelB = new CSGModel(_objectB);
-
-			CSGNode nodeA = new CSGNode( modelA.ToPolygons() );
-			CSGNode nodeB = new CSGNode( modelB.ToPolygons() );
-
-			List<CSGPolygon> polygons = CSGNode.Intersect(nodeA, nodeB).AllPolygons();
-
-			CSGModel result = new CSGModel(polygons);
-
-			return result.ToMesh();
-		}
-
-        public static void RealignMeshToAveragePosition(GameObject _object)
+        public static List<Mesh> Union(GameObject _objectA, GameObject _objectB)
         {
-            MeshFilter filter = _object.GetComponent<MeshFilter>();
+            CSGModel modelA = new CSGModel(_objectA);
+            CSGModel modelB = new CSGModel(_objectB);
 
-            Vector3 averagePosition = Vector3.zero;
-            for (int vertexIter = 0; vertexIter < filter.sharedMesh.vertexCount; vertexIter++)
-            {
-                averagePosition += filter.sharedMesh.vertices[vertexIter];
-            }
-            averagePosition /= filter.sharedMesh.vertexCount;
+            CSGNode nodeA = new CSGNode(modelA.ToPolygons());
+            CSGNode nodeB = new CSGNode(modelB.ToPolygons());
 
-            //Vector3 transformDelta = averagePosition - _object.transform.position;
-
-            //for (int vertexIter = 0; vertexIter < filter.sharedMesh.vertexCount; vertexIter++)
-            //{
-            //    filter.sharedMesh.vertices[vertexIter] += transformDelta;
-            //}
-
-            _object.transform.position = averagePosition;
+            return CSGNode.Union(nodeA, nodeB);
         }
-	}
+
+        public static List<Mesh> Union2D(GameObject _objectA, GameObject _objectB)
+        {
+            CSGModel modelA = new CSGModel(_objectA);
+            CSGModel modelB = new CSGModel(_objectB);
+
+            CSGNode nodeA = new CSGNode(modelA.ToPolygons());
+            CSGNode nodeB = new CSGNode(modelB.ToPolygons());
+
+            return CSGNode.Union2D(nodeA, nodeB);
+        }
+
+        public static List<Mesh> Subtract(GameObject _objectA, GameObject _objectB)
+		{
+			CSGModel modelA = new CSGModel(_objectA);
+			CSGModel modelB = new CSGModel(_objectB);
+
+			CSGNode nodeA = new CSGNode( modelA.ToPolygons() );
+			CSGNode nodeB = new CSGNode( modelB.ToPolygons() );     
+
+            return CSGNode.Subtract(nodeA, nodeB);
+        }
+
+        public static List<Mesh> Subtract2D(GameObject _objectA, GameObject _objectB)
+        {
+            CSGModel modelA = new CSGModel(_objectA);
+            CSGModel modelB = new CSGModel(_objectB);
+
+            CSGNode nodeA = new CSGNode(modelA.ToPolygons());
+            CSGNode nodeB = new CSGNode(modelB.ToPolygons());
+
+            return CSGNode.Subtract2D(nodeA, nodeB);
+        }
+
+        public static List<Mesh> Intersect(GameObject _objectA, GameObject _objectB)
+		{
+			CSGModel modelA = new CSGModel(_objectA);
+			CSGModel modelB = new CSGModel(_objectB);
+
+			CSGNode nodeA = new CSGNode( modelA.ToPolygons() );
+			CSGNode nodeB = new CSGNode( modelB.ToPolygons() );
+
+			return CSGNode.Intersect(nodeA, nodeB);
+        }
+
+        public static List<Mesh> Intersect2D(GameObject _objectA, GameObject _objectB)
+        {
+            Debug.Log("Not valid operation for 2D");
+            return new List<Mesh>();
+        }
+
+        public static GameObject CreateObjectFromMesh(Mesh _mesh, Material _material)
+        {
+            GameObject newObject = new GameObject();
+            MeshFilter filter = newObject.AddComponent<MeshFilter>();
+            filter.sharedMesh = _mesh;
+            newObject.AddComponent<MeshRenderer>().sharedMaterial = _material;
+            return newObject;
+        }
+    }
 }

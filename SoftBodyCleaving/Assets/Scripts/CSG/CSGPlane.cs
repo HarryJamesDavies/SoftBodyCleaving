@@ -1,3 +1,6 @@
+// Original CSG.JS library by Evan Wallace (http://madebyevan.com), under the MIT license.
+// GitHub: https://github.com/evanw/csg.js/
+
 using System;
 using UnityEngine;
 using System.Collections.Generic;
@@ -57,7 +60,7 @@ namespace CSG
             for (int i = 0; i < _polygon.m_vertices.Count; i++)
             {
                 float t = Vector3.Dot(m_normal, _polygon.m_vertices[i].m_position) - m_planeWidth;
-                PolygonType type = (t < -float.Epsilon) ? PolygonType.Back : ((t > float.Epsilon) ?
+                PolygonType type = (t < -CSG.EPSILON) ? PolygonType.Back : ((t > CSG.EPSILON) ?
                     PolygonType.Front : PolygonType.Coplanar);
                 polygonType |= type;
                 types.Add(type);

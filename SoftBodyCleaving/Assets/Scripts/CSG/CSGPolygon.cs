@@ -1,4 +1,6 @@
-using UnityEngine;
+// Original CSG.JS library by Evan Wallace (http://madebyevan.com), under the MIT license.
+// GitHub: https://github.com/evanw/csg.js/
+
 using System.Collections.Generic;
 
 namespace CSG
@@ -16,10 +18,19 @@ namespace CSG
 
 		public void Flip()
 		{
-			m_vertices.Reverse();
+            //List<CSGVertex> vertices = m_vertices.GetRange(0, m_vertices.Count);
+            //m_vertices.Clear();
+            //m_vertices.Add(vertices[0]);
+            //m_vertices.Add(vertices[2]);
+            //m_vertices.Add(vertices[1]);
+            //vertices.Clear();
 
-			for(int i = 0; i < m_vertices.Count; i++)
-				m_vertices[i].Flip();
+            m_vertices.Reverse();
+
+            for (int vertexIter = 0; vertexIter < m_vertices.Count; vertexIter++)
+            {
+                m_vertices[vertexIter].Flip();
+            }
 
 			m_plane.Flip();
 		}

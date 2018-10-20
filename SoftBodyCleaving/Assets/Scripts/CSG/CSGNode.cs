@@ -1,4 +1,9 @@
+// Original CSG.JS library by Evan Wallace (http://madebyevan.com), under the MIT license.
+// GitHub: https://github.com/evanw/csg.js/
+
+using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace CSG
 {
@@ -11,7 +16,10 @@ namespace CSG
 
 		public CSGPlane m_plane;
 
-		public CSGNode()
+        private const int C_MaxRecursions = 100000;
+
+
+        public CSGNode()
 		{
 			m_frontNode = null;
 			m_backNode = null;
@@ -37,28 +45,36 @@ namespace CSG
 			return clone;
 		}
 
-		// Remove all polygons in this BSP tree that are inside the other BSP tree
-		// `bsp`.
-		public void ClipTo(CSGNode _otherNode)
+        // Remove all polygons in this BSP tree that are inside the other BSP tree
+        // `bsp`.
+        public void ClipTo(CSGNode _otherNode, int _recursionCount = 0)
+        {
+            if (_recursionCount > C_MaxRecursions)
+            {
+                Debug.LogWarning("Hit RecursionCap");
+                return;
+            }
+
+            m_polygons = _otherNode.ClipPolygons(m_polygons, 0);
+
+            if (m_frontNode != null)
+            {
+                m_frontNode.ClipTo(_otherNode, _recursionCount + 1);
+            }
+
+            if (m_backNode != null)
+            {
+                m_backNode.ClipTo(_otherNode, _recursionCount + 1);
+            }
+        }
+
+        // Convert solid space to empty space and empty space to solid space.
+        public void Invert()
 		{
-			m_polygons = _otherNode.ClipPolygons(m_polygons);
-
-			if (m_frontNode != null)
-			{
-				m_frontNode.ClipTo(_otherNode);
-			}
-
-			if (m_backNode != null)
-			{
-				m_backNode.ClipTo(_otherNode);
-			}
-		}
-
-		// Convert solid space to empty space and empty space to solid space.
-		public void Invert()
-		{	
-			for (int i = 0; i < m_polygons.Count; i++)
-				m_polygons[i].Flip();
+            for (int i = 0; i < m_polygons.Count; i++)
+            {
+                m_polygons[i].Flip();
+            }
 
 			m_plane.Flip();
 
@@ -81,10 +97,18 @@ namespace CSG
         // new polygons are filtered down to the bottom of the tree and become new
         // nodes there. Each set of polygons is partitioned using the first polygon
         // (no heuristic is used to pick a good split).
-        public void Build(List<CSGPolygon> _polygons)
+        public void Build(List<CSGPolygon> _polygons, int _recursionCount = 0)
         {
-            if (_polygons.Count < 1)
+            if (_recursionCount > C_MaxRecursions)
+            {
+                Debug.LogWarning("Hit RecursionCap");
                 return;
+            }
+
+            if (_polygons.Count < 1)
+            {
+                return;
+            }
 
             if (m_plane == null || !m_plane.Valid())
             {
@@ -95,7 +119,9 @@ namespace CSG
 
 
             if (m_polygons == null)
+            {
                 m_polygons = new List<CSGPolygon>();
+            }
 
             List<CSGPolygon> frontPolygons = new List<CSGPolygon>();
             List<CSGPolygon> backPolygons = new List<CSGPolygon>();
@@ -110,7 +136,7 @@ namespace CSG
                 if (m_frontNode == null)
                     m_frontNode = new CSGNode();
 
-                m_frontNode.Build(frontPolygons);
+                m_frontNode.Build(frontPolygons, _recursionCount + 1);
             }
 
             if (backPolygons.Count > 0)
@@ -118,35 +144,48 @@ namespace CSG
                 if (m_backNode == null)
                     m_backNode = new CSGNode();
 
-                m_backNode.Build(backPolygons);
+                m_backNode.Build(backPolygons, _recursionCount + 1);
             }
         }
 
-		// Recursively remove all polygons in `polygons` that are inside this BSP
-		// tree.
-		public List<CSGPolygon> ClipPolygons(List<CSGPolygon> _polygons)
-		{
-			if (!m_plane.Valid())
+        // Recursively remove all polygons in `polygons` that are inside this BSP
+        // tree.
+        public List<CSGPolygon> ClipPolygons(List<CSGPolygon> _polygons, int _recursionCount = 0)
+        {
+            if (_recursionCount > C_MaxRecursions)
+            {
+                Debug.LogWarning("Hit RecursionCap");
+                return _polygons;
+            }
+
+            if (!m_plane.Valid())
 			{
 				return _polygons;
 			}
 
 			List<CSGPolygon> frontPolygons = new List<CSGPolygon>();
-			List<CSGPolygon> backPolygons = new List<CSGPolygon>();	
+			List<CSGPolygon> backPolygons = new List<CSGPolygon>();
 
-			for (int polygonIter = 0; polygonIter < _polygons.Count; polygonIter++)
-			{
-				m_plane.SplitPolygon(_polygons[polygonIter], frontPolygons, backPolygons, frontPolygons, backPolygons);
-			}
+            try
+            {
+                for (int polygonIter = 0; polygonIter < _polygons.Count; polygonIter++)
+                {
+                    m_plane.SplitPolygon(_polygons[polygonIter], frontPolygons, backPolygons, frontPolygons, backPolygons);
+                }
+            }
+            catch (NullReferenceException ex)
+            {
+                Debug.Log("Hi");
+            }
 
 			if (m_frontNode != null)
 			{
-				frontPolygons = m_frontNode.ClipPolygons(frontPolygons);
+				frontPolygons = m_frontNode.ClipPolygons(frontPolygons, _recursionCount + 1);
 			}
 
 			if (m_backNode != null)
 			{
-				backPolygons = m_backNode.ClipPolygons(backPolygons);
+				backPolygons = m_backNode.ClipPolygons(backPolygons, _recursionCount + 1);
 			}
 			else
 			{
@@ -157,21 +196,27 @@ namespace CSG
 
 			return frontPolygons;
 		}
-        
-		public List<CSGPolygon> AllPolygons()
-		{
-			List<CSGPolygon> polygons = this.m_polygons;
+
+        public List<CSGPolygon> AllPolygons(int _recursionCount = 0)
+        {
+            List<CSGPolygon> polygons = m_polygons;
             List<CSGPolygon> frontPolygons = new List<CSGPolygon>();
             List<CSGPolygon> backPolygons = new List<CSGPolygon>();
 
-			if (m_frontNode != null)
+            if (_recursionCount > C_MaxRecursions)
+            {
+                Debug.LogWarning("Hit RecursionCap");
+                return m_polygons;
+            }
+
+            if (m_frontNode != null)
 			{
-				frontPolygons = m_frontNode.AllPolygons();
+				frontPolygons = m_frontNode.AllPolygons(_recursionCount + 1);
 			}
 
 			if (m_backNode != null)
 			{
-				backPolygons = m_backNode.AllPolygons();
+				backPolygons = m_backNode.AllPolygons(_recursionCount + 1);
 			}
 
 			polygons.AddRange(frontPolygons);
@@ -180,57 +225,133 @@ namespace CSG
 			return polygons;
 		}
 
-#region STATIC OPERATIONS
+        #region STATIC OPERATIONS
 
-		// Return a new CSG solid representing space in either this solid or in the
-		// solid `csg`. Neither this solid nor the solid `csg` are modified.
-		public static CSGNode Union(CSGNode nodeAIn, CSGNode nodeBIn)
-		{
-			CSGNode nodeA = nodeAIn.Clone();
+        // Return a new CSG solid representing space in either this solid or in the
+        // solid `csg`. Neither this solid nor the solid `csg` are modified.
+        public static List<Mesh> Union(CSGNode nodeAIn, CSGNode nodeBIn)
+        {
+            List<Mesh> resultantMeshes = new List<Mesh>();
+
+            CSGNode nodeA = nodeAIn.Clone();
+            CSGNode nodeB = nodeBIn.Clone();
+
+            nodeA.ClipTo(nodeB);
+            nodeB.ClipTo(nodeA);
+            nodeB.Invert();
+            nodeB.ClipTo(nodeA);
+            nodeB.Invert();
+
+            nodeA.Build(nodeB.AllPolygons());
+
+            CSGModel resultModel = new CSGModel(nodeA.AllPolygons());
+            if (resultModel.SubDivideMesh())
+            {
+                for (int subMeshIter = 0; subMeshIter < resultModel.m_subModels.Count; subMeshIter++)
+                {
+                    resultantMeshes.Add(resultModel.m_subModels[subMeshIter].ToMesh());
+                }
+            }
+            else
+            {
+                resultantMeshes.Add(resultModel.ToMesh());
+            }
+
+            return resultantMeshes;
+        }
+
+        // Return a new CSG solid representing space in either this solid or in the
+        // solid `csg`. Neither this solid nor the solid `csg` are modified.
+        public static List<Mesh> Union2D(CSGNode nodeAIn, CSGNode nodeBIn)
+        {
+            List<Mesh> resultantMeshes = new List<Mesh>();
+
+            CSGNode nodeA = nodeAIn.Clone();
+            CSGNode nodeB = nodeBIn.Clone();
+            nodeA.Build(nodeB.AllPolygons());
+
+            CSGModel resultantModel = new CSGModel(nodeA.AllPolygons());
+            resultantModel.RemoveOverlappingVertices();
+            resultantModel.MakeWaterTight();
+            resultantMeshes.Add(resultantModel.ToMesh());
+
+            return resultantMeshes;
+        }
+
+        // Return a new CSG solid representing space in this solid but not in the
+        // solid `csg`. Neither this solid nor the solid `csg` are modified.
+        public static List<Mesh> Subtract(CSGNode nodeAIn, CSGNode nodeBIn)
+        {
+            List<Mesh> resultantMeshes = new List<Mesh>();
+
+            CSGNode nodeA = nodeAIn.Clone();
 			CSGNode nodeB = nodeBIn.Clone();
 
-			nodeA.ClipTo(nodeB);
-			nodeB.ClipTo(nodeA);
-			nodeB.Invert();
-			nodeB.ClipTo(nodeA);
-			nodeB.Invert();
+            nodeA.Invert();
+            nodeA.ClipTo(nodeB);
+            nodeB.ClipTo(nodeA);
+            nodeB.Invert();
+            nodeB.ClipTo(nodeA);
+            nodeB.Invert();
+            nodeA.Build(nodeB.AllPolygons());
+            nodeA.Invert();
 
-			nodeA.Build(nodeB.AllPolygons());
+            CSGModel resultModel = new CSGModel(nodeA.AllPolygons());
+            if (resultModel.SubDivideMesh())
+            {
+                for (int subMeshIter = 0; subMeshIter < resultModel.m_subModels.Count; subMeshIter++)
+                {
+                    resultantMeshes.Add(resultModel.m_subModels[subMeshIter].ToMesh());
+                }
+            }
+            else
+            {
+                resultantMeshes.Add(resultModel.ToMesh());
+            }
 
-			CSGNode result = new CSGNode(nodeA.AllPolygons());
-
-			return result;
+            return resultantMeshes;
 		}
 
-		// Return a new CSG solid representing space in this solid but not in the
-		// solid `csg`. Neither this solid nor the solid `csg` are modified.
-		public static CSGNode Subtract(CSGNode nodeAIn, CSGNode nodeBIn)
-		{
-			CSGNode nodeA = nodeAIn.Clone();
+        // Return a new CSG solid representing space in this solid but not in the
+        // solid `csg`. Neither this solid nor the solid `csg` are modified.
+        public static List<Mesh> Subtract2D(CSGNode nodeAIn, CSGNode nodeBIn)
+        {
+            List<Mesh> resultantMeshes = new List<Mesh>();
+
+            CSGNode nodeA1 = nodeAIn.Clone();
+            CSGNode nodeB1 = nodeBIn.Clone();
+            nodeA1.Invert();
+            nodeA1.ClipTo(nodeB1);
+
+            CSGNode nodeA2 = nodeAIn.Clone();
+            CSGNode nodeB2 = nodeBIn.Clone();
+            nodeA2.Invert();
+            nodeB2.Invert();
+            nodeA2.ClipTo(nodeB2);
+
+            List<CSGModel> resultantModels = new List<CSGModel>();
+            resultantModels.Add(new CSGModel(nodeA1.AllPolygons()));
+            resultantModels.Add(new CSGModel(nodeA2.AllPolygons()));
+
+            for (int modelIter = 0; modelIter < resultantModels.Count; modelIter++)
+            {
+                resultantModels[modelIter].RemoveOverlappingVertices();
+                resultantModels[modelIter].MakeWaterTight();
+                resultantMeshes.Add(resultantModels[modelIter].ToMesh());
+            }
+            return resultantMeshes;
+        }
+
+        // Return a new CSG solid representing space both this solid and in the
+        // solid `csg`. Neither this solid nor the solid `csg` are modified.
+        public static List<Mesh> Intersect(CSGNode nodeAIn, CSGNode nodeBIn)
+        {
+            List<Mesh> resultantMeshes = new List<Mesh>();
+
+            CSGNode nodeA = nodeAIn.Clone();
 			CSGNode nodeB = nodeBIn.Clone();
 
 			nodeA.Invert();
-			nodeA.ClipTo(nodeB);
-			nodeB.ClipTo(nodeA);
-			nodeB.Invert();
-			nodeB.ClipTo(nodeA);
-			nodeB.Invert();
-			nodeA.Build(nodeB.AllPolygons());
-			nodeA.Invert();
-
-			CSGNode result = new CSGNode(nodeA.AllPolygons());
-
-			return result;
-		}
-
-		// Return a new CSG solid representing space both this solid and in the
-		// solid `csg`. Neither this solid nor the solid `csg` are modified.
-		public static CSGNode Intersect(CSGNode nodeAIn, CSGNode nodeBIn)
-		{
-			CSGNode nodeA = nodeAIn.Clone();
-			CSGNode nodeB = nodeBIn.Clone();
-
-			nodeA.Invert();
 			nodeB.ClipTo(nodeA);
 			nodeB.Invert();
 			nodeA.ClipTo(nodeB);
@@ -238,10 +359,21 @@ namespace CSG
 			nodeA.Build(nodeB.AllPolygons());
 			nodeA.Invert();
 
-			CSGNode result = new CSGNode(nodeA.AllPolygons());
+            CSGModel resultModel = new CSGModel(nodeA.AllPolygons());
+            if (resultModel.SubDivideMesh())
+            {
+                for (int subMeshIter = 0; subMeshIter < resultModel.m_subModels.Count; subMeshIter++)
+                {
+                    resultantMeshes.Add(resultModel.m_subModels[subMeshIter].ToMesh());
+                }
+            }
+            else
+            {
+                resultantMeshes.Add(resultModel.ToMesh());
+            }
 
-			return result;
-		}
-#endregion
-	}
+            return resultantMeshes;
+        }
+        #endregion
+    }
 }

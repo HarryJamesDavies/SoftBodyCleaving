@@ -1,3 +1,6 @@
+// Original CSG.JS library by Evan Wallace (http://madebyevan.com), under the MIT license.
+// GitHub: https://github.com/evanw/csg.js/
+
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
@@ -60,10 +63,12 @@ namespace CSG
             Color[] colours = objectMesh.colors;
 
             for (int i = 0; i < vertices.Length; i++)
-                m_vertices.Add(new CSGVertex(objectTransform.TransformPoint(vertices[i]), 
-                    objectTransform.TransformDirection(normals[i]), uvs == null ? 
-                    Vector2.zero : uvs[i], colours == null || colours.Length != vertexCount ? 
+            {
+                m_vertices.Add(new CSGVertex(objectTransform.TransformPoint(vertices[i]),
+                    objectTransform.TransformDirection(normals[i]), uvs == null ?
+                    Vector2.zero : uvs[i], colours == null || colours.Length != vertexCount ?
                     Color.white : colours[i]));
+            }
 
             m_indices = new List<int>(objectMesh.triangles);
 
@@ -121,143 +126,143 @@ namespace CSG
             RemoveOverlappingVertices();
             MakeWaterTight();
 
-            Dictionary<int, CSGSubModel> vertexCheckList = new Dictionary<int, CSGSubModel>();
+            //Dictionary<int, CSGSubModel> vertexCheckList = new Dictionary<int, CSGSubModel>();
 
-            //Setup check list for each vertex
-            for (int vertexIter = 0; vertexIter < m_vertices.Count; vertexIter++)
-            {
-                vertexCheckList.Add(vertexIter, null);
-            }
+            ////Setup check list for each vertex
+            //for (int vertexIter = 0; vertexIter < m_vertices.Count; vertexIter++)
+            //{
+            //    vertexCheckList.Add(vertexIter, null);
+            //}
 
-            List<CSGSubModel> builderSubModels = new List<CSGSubModel>();
+            //List<CSGSubModel> builderSubModels = new List<CSGSubModel>();
 
-            for (int polygonIter = 0; polygonIter < m_indices.Count / 3; polygonIter++)
-            {
-                int indexAIter = polygonIter * 3;
-                int indexBIter = indexAIter + 1;
-                int indexCIter = indexBIter + 1;
+            //for (int polygonIter = 0; polygonIter < m_indices.Count / 3; polygonIter++)
+            //{
+            //    int indexAIter = polygonIter * 3;
+            //    int indexBIter = indexAIter + 1;
+            //    int indexCIter = indexBIter + 1;
 
-                List<CSGSubModel> activeSubModels = new List<CSGSubModel>();
+            //    List<CSGSubModel> activeSubModels = new List<CSGSubModel>();
 
-                bool vertexAAssigned = (vertexCheckList[m_indices[indexAIter]] != null);
-                if (vertexAAssigned)
-                {
-                    activeSubModels.Add(vertexCheckList[m_indices[indexAIter]]);
-                }
+            //    bool vertexAAssigned = (vertexCheckList[m_indices[indexAIter]] != null);
+            //    if (vertexAAssigned)
+            //    {
+            //        activeSubModels.Add(vertexCheckList[m_indices[indexAIter]]);
+            //    }
 
-                bool vertexBAssigned = (vertexCheckList[m_indices[indexBIter]] != null);
-                if (vertexBAssigned)
-                {
-                    if (!activeSubModels.Contains(vertexCheckList[m_indices[indexBIter]]))
-                    {
-                        activeSubModels.Add(vertexCheckList[m_indices[indexBIter]]);
-                    }
-                }
+            //    bool vertexBAssigned = (vertexCheckList[m_indices[indexBIter]] != null);
+            //    if (vertexBAssigned)
+            //    {
+            //        if (!activeSubModels.Contains(vertexCheckList[m_indices[indexBIter]]))
+            //        {
+            //            activeSubModels.Add(vertexCheckList[m_indices[indexBIter]]);
+            //        }
+            //    }
 
-                bool vertexCAssigned = (vertexCheckList[m_indices[indexCIter]] != null);
-                if (vertexCAssigned)
-                {
-                    if (!activeSubModels.Contains(vertexCheckList[m_indices[indexBIter]]))
-                    {
-                        activeSubModels.Add(vertexCheckList[m_indices[indexCIter]]);
-                    }
-                }
+            //    bool vertexCAssigned = (vertexCheckList[m_indices[indexCIter]] != null);
+            //    if (vertexCAssigned)
+            //    {
+            //        if (!activeSubModels.Contains(vertexCheckList[m_indices[indexBIter]]))
+            //        {
+            //            activeSubModels.Add(vertexCheckList[m_indices[indexCIter]]);
+            //        }
+            //    }
 
-                if (activeSubModels.Count == 0)
-                {
-                    CSGSubModel currentSubModel = new CSGSubModel(this);
+            //    if (activeSubModels.Count == 0)
+            //    {
+            //        CSGSubModel currentSubModel = new CSGSubModel(this);
 
-                    currentSubModel.m_vertices.Add(m_indices[indexAIter]);
-                    currentSubModel.m_vertices.Add(m_indices[indexBIter]);
-                    currentSubModel.m_vertices.Add(m_indices[indexCIter]);
+            //        currentSubModel.m_vertices.Add(m_indices[indexAIter]);
+            //        currentSubModel.m_vertices.Add(m_indices[indexBIter]);
+            //        currentSubModel.m_vertices.Add(m_indices[indexCIter]);
 
-                    currentSubModel.m_indices.Add(m_indices[indexAIter]);
-                    currentSubModel.m_indices.Add(m_indices[indexBIter]);
-                    currentSubModel.m_indices.Add(m_indices[indexCIter]);
+            //        currentSubModel.m_indices.Add(m_indices[indexAIter]);
+            //        currentSubModel.m_indices.Add(m_indices[indexBIter]);
+            //        currentSubModel.m_indices.Add(m_indices[indexCIter]);
 
-                    builderSubModels.Add(currentSubModel);
+            //        builderSubModels.Add(currentSubModel);
 
-                    vertexCheckList[m_indices[indexAIter]] = currentSubModel;
-                    vertexCheckList[m_indices[indexBIter]] = currentSubModel;
-                    vertexCheckList[m_indices[indexCIter]] = currentSubModel;
-                }
-                else if (activeSubModels.Count > 1)
-                {
-                    do
-                    {
-                        CSGSubModel result = activeSubModels[0].MergeModels(activeSubModels[1]);
-                        for (int vertexIter = 0; vertexIter < result.m_vertices.Count; vertexIter++)
-                        {
-                            vertexCheckList[result.m_vertices[vertexIter]] = result;
-                        }
+            //        vertexCheckList[m_indices[indexAIter]] = currentSubModel;
+            //        vertexCheckList[m_indices[indexBIter]] = currentSubModel;
+            //        vertexCheckList[m_indices[indexCIter]] = currentSubModel;
+            //    }
+            //    else if (activeSubModels.Count > 1)
+            //    {
+            //        do
+            //        {
+            //            CSGSubModel result = activeSubModels[0].MergeModels(activeSubModels[1]);
+            //            for (int vertexIter = 0; vertexIter < result.m_vertices.Count; vertexIter++)
+            //            {
+            //                vertexCheckList[result.m_vertices[vertexIter]] = result;
+            //            }
 
-                        builderSubModels.Remove(activeSubModels[0]);
-                        builderSubModels.Remove(activeSubModels[1]);
+            //            builderSubModels.Remove(activeSubModels[0]);
+            //            builderSubModels.Remove(activeSubModels[1]);
 
-                        activeSubModels.RemoveAt(1);
-                        activeSubModels.RemoveAt(0);
+            //            activeSubModels.RemoveAt(1);
+            //            activeSubModels.RemoveAt(0);
 
-                        activeSubModels.Add(result);
+            //            activeSubModels.Add(result);
 
-                    } while (activeSubModels.Count > 1);
+            //        } while (activeSubModels.Count > 1);
 
-                    //Adds indices
-                    activeSubModels[0].m_indices.Add(m_indices[indexAIter]);
-                    activeSubModels[0].m_indices.Add(m_indices[indexBIter]);
-                    activeSubModels[0].m_indices.Add(m_indices[indexCIter]);
+            //        //Adds indices
+            //        activeSubModels[0].m_indices.Add(m_indices[indexAIter]);
+            //        activeSubModels[0].m_indices.Add(m_indices[indexBIter]);
+            //        activeSubModels[0].m_indices.Add(m_indices[indexCIter]);
 
-                    builderSubModels.Add(activeSubModels[0]);
-                    activeSubModels.Clear();
-                }
-                else
-                {
-                    //Add vertices if not already added
-                    if (!activeSubModels[0].m_vertices.Contains(m_indices[indexAIter]))
-                    {
-                        activeSubModels[0].m_vertices.Add(m_indices[indexAIter]);
-                    }
+            //        builderSubModels.Add(activeSubModels[0]);
+            //        activeSubModels.Clear();
+            //    }
+            //    else
+            //    {
+            //        //Add vertices if not already added
+            //        if (!activeSubModels[0].m_vertices.Contains(m_indices[indexAIter]))
+            //        {
+            //            activeSubModels[0].m_vertices.Add(m_indices[indexAIter]);
+            //        }
 
-                    if (!activeSubModels[0].m_vertices.Contains(m_indices[indexBIter]))
-                    {
-                        activeSubModels[0].m_vertices.Add(m_indices[indexBIter]);
-                    }
+            //        if (!activeSubModels[0].m_vertices.Contains(m_indices[indexBIter]))
+            //        {
+            //            activeSubModels[0].m_vertices.Add(m_indices[indexBIter]);
+            //        }
 
-                    if (!activeSubModels[0].m_vertices.Contains(m_indices[indexCIter]))
-                    {
-                        activeSubModels[0].m_vertices.Add(m_indices[indexCIter]);
-                    }
+            //        if (!activeSubModels[0].m_vertices.Contains(m_indices[indexCIter]))
+            //        {
+            //            activeSubModels[0].m_vertices.Add(m_indices[indexCIter]);
+            //        }
 
-                    //Adds indices
-                    activeSubModels[0].m_indices.Add(m_indices[indexAIter]);
-                    activeSubModels[0].m_indices.Add(m_indices[indexBIter]);
-                    activeSubModels[0].m_indices.Add(m_indices[indexCIter]);
+            //        //Adds indices
+            //        activeSubModels[0].m_indices.Add(m_indices[indexAIter]);
+            //        activeSubModels[0].m_indices.Add(m_indices[indexBIter]);
+            //        activeSubModels[0].m_indices.Add(m_indices[indexCIter]);
 
-                    //Set vertex check list
-                    if (vertexAAssigned)
-                    {
-                        vertexCheckList[m_indices[indexBIter]] = activeSubModels[0];
-                        vertexCheckList[m_indices[indexCIter]] = activeSubModels[0];
-                    }
-                    else if (vertexBAssigned)
-                    {
-                        vertexCheckList[m_indices[indexAIter]] = activeSubModels[0];
-                        vertexCheckList[m_indices[indexCIter]] = activeSubModels[0];
-                    }
-                    else
-                    {
-                        vertexCheckList[m_indices[indexAIter]] = activeSubModels[0];
-                        vertexCheckList[m_indices[indexBIter]] = activeSubModels[0];
-                    }
-                }
-            }
+            //        //Set vertex check list
+            //        if (vertexAAssigned)
+            //        {
+            //            vertexCheckList[m_indices[indexBIter]] = activeSubModels[0];
+            //            vertexCheckList[m_indices[indexCIter]] = activeSubModels[0];
+            //        }
+            //        else if (vertexBAssigned)
+            //        {
+            //            vertexCheckList[m_indices[indexAIter]] = activeSubModels[0];
+            //            vertexCheckList[m_indices[indexCIter]] = activeSubModels[0];
+            //        }
+            //        else
+            //        {
+            //            vertexCheckList[m_indices[indexAIter]] = activeSubModels[0];
+            //            vertexCheckList[m_indices[indexBIter]] = activeSubModels[0];
+            //        }
+            //    }
+            //}
 
-            if(builderSubModels.Count > 1)
-            {
-                m_subModels.AddRange(builderSubModels);
-                return true;
-            }
+            //if(builderSubModels.Count > 1)
+            //{
+            //    m_subModels.AddRange(builderSubModels);
+            //    return true;
+            //}
 
-            m_subModels.Clear();
+            //m_subModels.Clear();
             return false;
         }
 

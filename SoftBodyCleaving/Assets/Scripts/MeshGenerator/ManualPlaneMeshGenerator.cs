@@ -21,6 +21,7 @@ public class ManualPlaneMeshGenerator : MonoBehaviour
 
     public bool m_useWorldSpace = true;
     public bool m_backfaceCulling = false;
+    public bool m_generateSoftBody = false;
 
     private void Awake()
     {
@@ -36,6 +37,11 @@ public class ManualPlaneMeshGenerator : MonoBehaviour
 
         GenerateVertices();
         UpdateMesh();
+
+        if(m_generateSoftBody)
+        {
+            MSM.MSM.MakeObjectSoftbody3D(gameObject);
+        }
     }
 
     void GenerateVertices()
@@ -184,9 +190,10 @@ public class ManualPlaneMeshGenerator : MonoBehaviour
     {
         m_mesh.Clear();
         m_mesh.vertices = m_vertices.ToArray();
-        m_mesh.uv = m_uvs.ToArray();
         m_mesh.triangles = m_triangles.ToArray();
+        m_mesh.uv = m_uvs.ToArray();
         m_mesh.colors = m_colours.ToArray();
+        m_mesh.RecalculateNormals();
     }
 
     private void HighlightVertex()

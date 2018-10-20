@@ -137,8 +137,6 @@ public class SoftBodyCore : MonoBehaviour
     {
         if (m_initialise && m_enabled)
         {
-            GlobalForces.s_instance.CalculateGlobalForces();
-
             UpdateVariables();
 
             DispatchShader();
@@ -167,7 +165,7 @@ public class SoftBodyCore : MonoBehaviour
         UpdateGPUMasses();
 
         m_gpuSoftBody.SetFloat("deltaTime", Time.deltaTime);
-        m_gpuSoftBody.SetVector("globalForce", GlobalForces.s_instance.m_globalForce);
+        m_gpuSoftBody.SetVector("globalForce", GlobalForces.s_instance.GetGlobalForce());
 
         m_gpuSoftBody.Dispatch(m_clearKernel, m_masses.Length / THREADSPERPASS, 1, 1);
         m_gpuSoftBody.Dispatch(m_calculateKernel, m_springs.Length / THREADSPERPASS, 1, 1);

@@ -40,12 +40,13 @@ public class SoftBodyMesh : MonoBehaviour
     private List<Color> m_colours = new List<Color>();
     private List<int> m_triangles = new List<int>();
 
-    public bool m_generateOnStart = false;
+    public bool m_initialiseOnStart = false;
     public bool m_useMeshInstance = true;
 
     private void Start()
     {
-        if (m_generateOnStart)
+        //Initalises SBmesh and SBCore on Start
+        if (m_initialiseOnStart)
         {
             Initialise();
 
@@ -57,6 +58,10 @@ public class SoftBodyMesh : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Sets target MeshFilter and generates Mesh Instance
+    /// </summary>
+    /// <param name="_meshFilter"></param>
     public void Initialise(MeshFilter _meshFilter = null)
     {
         if (_meshFilter)
@@ -64,13 +69,17 @@ public class SoftBodyMesh : MonoBehaviour
             m_meshFilter = _meshFilter;
         }
 
-        if (m_useMeshInstance)
+        if (m_useMeshInstance && m_meshFilter)
         {
             m_meshFilter.sharedMesh = Mesh.Instantiate(m_meshFilter.sharedMesh);
         }
     }
 
-    public void Create1DSoftBodyFromGroups(Chain _chain)
+    /// <summary>
+    /// Creates 1D SBMesh from Chain Vertex Groups
+    /// </summary>
+    /// <param name="_chain"></param>
+    public void Create1DSoftBodyFromChain(Chain _chain)
     {
         if (m_meshFilter.sharedMesh != null)
         {
@@ -370,14 +379,7 @@ public class SoftBodyMesh : MonoBehaviour
     {
         for (int vertexIter = 0; vertexIter < _group.m_vertices.Count; vertexIter++)
         {
-            try
-            {
-                m_vertices[_group.m_vertices[vertexIter]] += _displacement;
-            }
-            catch (ArgumentOutOfRangeException ex)
-            {
-                Debug.Log("Warning");
-            }
+            m_vertices[_group.m_vertices[vertexIter]] += _displacement;
         }
     }
 

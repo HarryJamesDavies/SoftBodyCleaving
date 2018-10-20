@@ -10,7 +10,7 @@ namespace MSM
         {
             SoftBodyMesh mesh = _object.AddComponent<SoftBodyMesh>();
             mesh.Initialise(_object.GetComponent<MeshFilter>());
-            mesh.Create1DSoftBodyFromGroups(_chain);
+            mesh.Create1DSoftBodyFromChain(_chain);
 
             SoftBodyCore core = _object.AddComponent<SoftBodyCore>();
             core.Initialise(mesh);

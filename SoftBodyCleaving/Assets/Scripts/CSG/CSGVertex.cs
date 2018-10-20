@@ -1,3 +1,6 @@
+// Original CSG.JS library by Evan Wallace (http://madebyevan.com), under the MIT license.
+// GitHub: https://github.com/evanw/csg.js/
+
 using UnityEngine;
 
 namespace CSG
@@ -30,7 +33,8 @@ namespace CSG
 
 		public void Flip()
 		{
-			m_normal *= -1f;
+			m_normal *= -1.0f;
+            m_sharedNormal = m_normal.normalized;
 		}
 
 		public static CSGVertex Interpolate(CSGVertex _vertexA, CSGVertex _vertexB, float _step)
