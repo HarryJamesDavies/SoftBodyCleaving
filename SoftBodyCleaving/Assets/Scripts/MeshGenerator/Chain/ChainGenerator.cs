@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
+using MSM;
 using UnityEngine;
 
 public class ChainGenerator : MonoBehaviour
@@ -21,9 +21,11 @@ public class ChainGenerator : MonoBehaviour
     private List<Vector3> m_vertices = new List<Vector3>();
     private List<Vector3> m_normals = new List<Vector3>();
     private List<int> m_triangles = new List<int>();
+    private List<Vector2> m_UVs = new List<Vector2>();
 
     [SerializeField] private bool m_backfaceCulling = false;
-    [SerializeField] private bool m_generateSoftBody = false;
+    [SerializeField] private bool m_makeSoftBody = false;
+    [SerializeField] private SoftBodySettings m_settings = new SoftBodySettings();
 
     void Start()
     {
@@ -36,9 +38,9 @@ public class ChainGenerator : MonoBehaviour
 
             GenerateChain();
 
-            if (m_generateSoftBody)
+            if (m_makeSoftBody)
             {
-                MSM.MSM.MakeObjectSoftbody1D(gameObject, m_chain);
+                MSM.MSM.MakeObjectSoftbodyChain(gameObject, m_chain, m_settings);
             }
         }
     }
@@ -60,6 +62,8 @@ public class ChainGenerator : MonoBehaviour
             Vector3 outDir = Vector3.Cross(m_lineNormal, m_lineDirection);
             outDir.Normalize();
 
+            float UVDelta = 1.0f / m_corePoints.Count;
+
             Mesh mesh = new Mesh();
 
             for (int coreIter = 0; coreIter < m_corePoints.Count; coreIter++)
@@ -72,10 +76,12 @@ public class ChainGenerator : MonoBehaviour
                 m_vertices.Add(m_corePoints[coreIter] + (outDir * halfWidth));
                 m_vertexGroups[coreIter].m_vertices.Add(m_vertices.Count - 1);
                 m_normals.Add(Vector3.one);
+                m_UVs.Add(new Vector2(0.0f, UVDelta * coreIter));
 
                 m_vertices.Add(m_corePoints[coreIter] + (outDir * -halfWidth));
                 m_vertexGroups[coreIter].m_vertices.Add(m_vertices.Count - 1);
                 m_normals.Add(Vector3.one);
+                m_UVs.Add(new Vector2(1.0f, UVDelta * coreIter));
 
             }
 
@@ -117,16 +123,19 @@ public class ChainGenerator : MonoBehaviour
     void GenerateBackFace()
     {
         int firstVertex = m_vertices.Count;
+        float UVDelta = 1.0f / m_corePoints.Count;
 
         for (int coreIter = 0; coreIter < m_corePoints.Count; coreIter++)
         {
             m_vertices.Add(m_vertices[(coreIter * 2)]);
             m_vertexGroups[coreIter].m_vertices.Add(m_vertices.Count - 1);
             m_normals.Add(Vector3.one);
+            m_UVs.Add(new Vector2(0.0f, UVDelta * coreIter));
 
             m_vertices.Add(m_vertices[(coreIter * 2) + 1]);
             m_vertexGroups[coreIter].m_vertices.Add(m_vertices.Count - 1);
             m_normals.Add(Vector3.one);
+            m_UVs.Add(new Vector2(1.0f, UVDelta * coreIter));
 
         }
 

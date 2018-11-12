@@ -30,8 +30,19 @@ namespace CSG
 		public CSGPlane(Vector3 _vertexA, Vector3 _vertexB, Vector3 _vertexC)
 		{
 			m_normal = Vector3.Cross(_vertexB - _vertexA, _vertexC - _vertexA);
-			m_planeWidth = Vector3.Dot(m_normal, _vertexA); 
-		}
+			m_planeWidth = Vector3.Dot(m_normal, _vertexA);
+        }
+
+        public CSGPlane(Vector3 _normal, float _planeWidth)
+        {
+            m_normal = _normal;
+            m_planeWidth = _planeWidth;
+        }
+
+        public CSGPlane DeepClone()
+        {
+            return new CSGPlane(m_normal, m_planeWidth);
+        }
 
 		public bool Valid()
 		{
@@ -98,7 +109,7 @@ namespace CSG
                     {
                         List<CSGVertex> front = new List<CSGVertex>();
                         List<CSGVertex> back = new List<CSGVertex>();
-
+                        
                         for (int vertexIter = 0; vertexIter < _polygon.m_vertices.Count; vertexIter++)
                         {
                             int nextVertexIndex = (vertexIter + 1) % _polygon.m_vertices.Count;

@@ -12,14 +12,20 @@ namespace CSG
         None,
         Union,
         Subtract,
-        Intersect
+        Intersect,
+        NVUnion,
+        NVSubtract,
+        NVIntersect,
+        HVUnion,
+        HVSubtract,
+        HVIntersect
     }
 
     public class CSG
     {
         public const float EPSILON = 0.00001f;
 
-        public static List<Mesh> Union(GameObject _objectA, GameObject _objectB)
+        public static List<Mesh> Union(GameObject _objectA, GameObject _objectB, CSGMeshingSettings _meshSettings)
         {
             CSGModel modelA = new CSGModel(_objectA);
             CSGModel modelB = new CSGModel(_objectB);
@@ -27,10 +33,10 @@ namespace CSG
             CSGNode nodeA = new CSGNode(modelA.ToPolygons());
             CSGNode nodeB = new CSGNode(modelB.ToPolygons());
 
-            return CSGNode.Union(nodeA, nodeB);
+            return CSGNode.Union(nodeA, nodeB, _meshSettings);
         }
 
-        public static List<Mesh> Union2D(GameObject _objectA, GameObject _objectB)
+        public static List<Mesh> NVUnion(GameObject _objectA, GameObject _objectB, CSGMeshingSettings _meshSettings)
         {
             CSGModel modelA = new CSGModel(_objectA);
             CSGModel modelB = new CSGModel(_objectB);
@@ -38,10 +44,21 @@ namespace CSG
             CSGNode nodeA = new CSGNode(modelA.ToPolygons());
             CSGNode nodeB = new CSGNode(modelB.ToPolygons());
 
-            return CSGNode.Union2D(nodeA, nodeB);
+            return CSGNode.NVUnion(nodeA, nodeB, _meshSettings);
         }
 
-        public static List<Mesh> Subtract(GameObject _objectA, GameObject _objectB)
+        public static List<Mesh> HVUnion(GameObject _objectA, GameObject _objectB, CSGMeshingSettings _meshSettings)
+        {
+            CSGModel modelA = new CSGModel(_objectA);
+            CSGModel modelB = new CSGModel(_objectB);
+
+            CSGNode nodeA = new CSGNode(modelA.ToPolygons());
+            CSGNode nodeB = new CSGNode(modelB.ToPolygons());
+
+            return CSGNode.HVUnion(nodeA, nodeB, _meshSettings);
+        }
+
+        public static List<Mesh> Subtract(GameObject _objectA, GameObject _objectB, CSGMeshingSettings _meshSettings)
 		{
 			CSGModel modelA = new CSGModel(_objectA);
 			CSGModel modelB = new CSGModel(_objectB);
@@ -49,10 +66,25 @@ namespace CSG
 			CSGNode nodeA = new CSGNode( modelA.ToPolygons() );
 			CSGNode nodeB = new CSGNode( modelB.ToPolygons() );     
 
-            return CSGNode.Subtract(nodeA, nodeB);
+            return CSGNode.Subtract(nodeA, nodeB, _meshSettings);
         }
 
-        public static List<Mesh> Subtract2D(GameObject _objectA, GameObject _objectB)
+        public static List<Mesh> NVSubtract(GameObject _objectA, GameObject _objectB, CSGMeshingSettings _meshSettings)
+        {
+            CSGModel modelA = new CSGModel(_objectA);
+            CSGModel modelB = new CSGModel(_objectB);
+            CSGModel modelC = new CSGModel(_objectA);
+            CSGModel modelD = new CSGModel(_objectB);
+
+            CSGNode nodeA = new CSGNode(modelA.ToPolygons());
+            CSGNode nodeB = new CSGNode(modelB.ToPolygons());
+            CSGNode nodeC = new CSGNode(modelC.ToPolygons());
+            CSGNode nodeD = new CSGNode(modelD.ToPolygons());
+
+            return CSGNode.NVSubtract(nodeA, nodeB, nodeC, nodeD, _meshSettings);
+        }
+
+        public static List<Mesh> HVSubtract(GameObject _objectA, GameObject _objectB, CSGMeshingSettings _meshSettings)
         {
             CSGModel modelA = new CSGModel(_objectA);
             CSGModel modelB = new CSGModel(_objectB);
@@ -60,10 +92,10 @@ namespace CSG
             CSGNode nodeA = new CSGNode(modelA.ToPolygons());
             CSGNode nodeB = new CSGNode(modelB.ToPolygons());
 
-            return CSGNode.Subtract2D(nodeA, nodeB);
+            return CSGNode.HVSubtract(nodeA, nodeB, _meshSettings);
         }
 
-        public static List<Mesh> Intersect(GameObject _objectA, GameObject _objectB)
+        public static List<Mesh> Intersect(GameObject _objectA, GameObject _objectB, CSGMeshingSettings _meshSettings)
 		{
 			CSGModel modelA = new CSGModel(_objectA);
 			CSGModel modelB = new CSGModel(_objectB);
@@ -71,13 +103,18 @@ namespace CSG
 			CSGNode nodeA = new CSGNode( modelA.ToPolygons() );
 			CSGNode nodeB = new CSGNode( modelB.ToPolygons() );
 
-			return CSGNode.Intersect(nodeA, nodeB);
+			return CSGNode.Intersect(nodeA, nodeB, _meshSettings);
         }
 
-        public static List<Mesh> Intersect2D(GameObject _objectA, GameObject _objectB)
+        public static List<Mesh> HVIntersect(GameObject _objectA, GameObject _objectB, CSGMeshingSettings _meshSettings)
         {
-            Debug.Log("Not valid operation for 2D");
-            return new List<Mesh>();
+            CSGModel modelA = new CSGModel(_objectA);
+            CSGModel modelB = new CSGModel(_objectB);
+
+            CSGNode nodeA = new CSGNode(modelA.ToPolygons());
+            CSGNode nodeB = new CSGNode(modelB.ToPolygons());
+
+            return CSGNode.HVIntersect(nodeA, nodeB, _meshSettings);
         }
 
         public static GameObject CreateObjectFromMesh(Mesh _mesh, Material _material)

@@ -1,13 +1,16 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using MSM;
 using UnityEngine;
 
 public class LineSlicingExample : MonoBehaviour
 {
-    public bool m_makeSoftBody = true;
-    public bool m_slicing = false;
-    public Vector3 m_sliceStartPosition = Vector3.zero;
-    public Vector3 m_sliceEndPosition = Vector3.zero;
+    [SerializeField] private bool m_makeSoftBody = true;
+
+    [SerializeField] private SoftBodySettings m_settings = new SoftBodySettings();
+
+    private bool m_slicing = false;
+    private Vector3 m_sliceStartPosition = Vector3.zero;
+    private Vector3 m_sliceEndPosition = Vector3.zero;
+
 
 	void Update ()
     {
@@ -21,7 +24,15 @@ public class LineSlicingExample : MonoBehaviour
         {
             m_slicing = false;
             m_sliceEndPosition = Input.mousePosition;
-            LineSlicer.CutChains(m_sliceStartPosition, m_sliceEndPosition, m_makeSoftBody);
+
+            if (m_makeSoftBody)
+            {
+                LineSlicer.CutChains(m_sliceStartPosition, m_sliceEndPosition, m_settings);
+            }
+            else
+            {
+                LineSlicer.CutChains(m_sliceStartPosition, m_sliceEndPosition);
+            }
         }
     }
 }

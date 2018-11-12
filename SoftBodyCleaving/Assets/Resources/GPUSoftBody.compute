@@ -1,5 +1,6 @@
 ﻿#pragma kernel ClearForces
-#pragma kernel CalculateForces
+#pragma kernel CalculateSpringForces
+#pragma kernel CalculateSphereColliders
 #pragma kernel CalculateDisplacement
 
 struct Spring
@@ -19,6 +20,13 @@ struct Mass
 	int resultantForceZ;
 };
 
+struct SphereCollider
+{
+	float3 position;
+	float radius;
+	float forceCoefficient;
+};
+
 float deltaTime;
 
 float3 globalForce;
@@ -28,10 +36,16 @@ float springCoefficient;
 float dragCoefficient;
 float pressureCoefficient;
 
+int numSphereColliders;
+
+float3 worldPosition;
+float3 localScale;
+
 RWStructuredBuffer<Mass> masses;
 StructuredBuffer<Spring> springs;
+RWStructuredBuffer<SphereCollider> sphereColliders;
 
-[numthreads(5, 1, 1)]
+[numthreads(16, 1, 1)]
 void ClearForces(uint3 id : SV_DispatchThreadID)
 {
 	masses[id.x].resultantForceX = 0;
@@ -39,8 +53,8 @@ void ClearForces(uint3 id : SV_DispatchThreadID)
 	masses[id.x].resultantForceZ = 0;
 }
 
-[numthreads(5,1,1)]
-void CalculateForces(uint3 id : SV_DispatchThreadID)
+[numthreads(16, 1, 1)]
+void CalculateSpringForces(uint3 id : SV_DispatchThreadID)
 {
 	Mass massA = masses[springs[id.x].massA];
 	Mass massB = masses[springs[id.x].massB];
@@ -65,7 +79,34 @@ void CalculateForces(uint3 id : SV_DispatchThreadID)
 	InterlockedAdd(masses[springs[id.x].massB].resultantForceZ, -forceZ);
 }
 
-[numthreads(5, 1, 1)]
+[numthreads(16, 1, 1)]
+void CalculateSphereColliders(uint3 id : SV_DispatchThreadID)
+{
+	if (numSphereColliders > 0)
+	{
+		int interactions = 0;
+
+		while (interactions < numSphereColliders)
+		{
+			float3 massOffset = ((masses[id.x].position * localScale) + worldPosition) - sphereColliders[interactions].position;
+			float offsetMagnitude = length(massOffset);
+
+			if (offsetMagnitude < sphereColliders[interactions].radius)
+			{
+				float3 massOffsetNorm = normalize(massOffset);
+				float3 force = massOffsetNorm * sphereColliders[interactions].forceCoefficient;
+
+				InterlockedAdd(masses[id.x].resultantForceX, (int)(force.x));
+				InterlockedAdd(masses[id.x].resultantForceY, (int)(force.y));
+				InterlockedAdd(masses[id.x].resultantForceZ, (int)(force.z));
+			}
+			interactions++;
+		}
+	}
+
+}
+
+[numthreads(16, 1, 1)]
 void CalculateDisplacement(uint3 id : SV_DispatchThreadID)
 {
 	float3 force = float3(masses[id.x].resultantForceX,

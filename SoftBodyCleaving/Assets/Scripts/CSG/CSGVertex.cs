@@ -69,5 +69,10 @@ namespace CSG
         {
             m_position.Set(_position.x, _position.y, _position.z);
         }
+
+        public CSGVertex DeepClone()
+        {
+            return new CSGVertex(m_position, m_normal, m_uv, m_color);
+        }
 	}
 }

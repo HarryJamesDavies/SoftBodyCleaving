@@ -1,4 +1,4 @@
-﻿using System.Linq;
+﻿using MSM;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -10,23 +10,18 @@ public class ThreeDimCSGTest : MonoBehaviour
     [SerializeField] private CSG.BooleanOperations m_currentOperation = CSG.BooleanOperations.None;
     private CSG.BooleanOperations m_previousOperation = CSG.BooleanOperations.None;
 
-    [SerializeField] private bool m_makeUniqueMesh = true;
-    //[SerializeField] private bool m_makeMeshesObjects = true;
-    [SerializeField] private bool m_makeSoftBodies = true;
-    [SerializeField] private bool m_destroyComponents = true;
+    [SerializeField] private SoftBodySettings m_sbSettings = new SoftBodySettings();
+    [SerializeField] private CSGSettings m_csgSettings = new CSGSettings();
+    [SerializeField] private CSGMeshingSettings m_csgMeshSettings = new CSGMeshingSettings();
 
     private void Update()
     {
         if(m_currentOperation != m_previousOperation)
         {
             List<Mesh> resultantMeshes = PreformOperation(m_currentOperation);
+            MakeObjectsFromMeshes(resultantMeshes);
 
-            //if (m_makeMeshesObjects)
-            //{
-                MakeObjectsFromMeshes(resultantMeshes);
-            //}
-
-            if (m_destroyComponents)
+            if (m_csgSettings.m_destroyComponents)
             {
                 Destroy(m_componentA);
                 Destroy(m_componentB);
@@ -38,7 +33,7 @@ public class ThreeDimCSGTest : MonoBehaviour
 
     private List<Mesh> PreformOperation(CSG.BooleanOperations _operation)
     {
-        if (m_makeUniqueMesh)
+        if (m_csgSettings.m_makeUniqueMeshes)
         {
             MeshFilter filterA = m_componentA.GetComponent<MeshFilter>();
             Mesh meshA = (Mesh)Instantiate(filterA.sharedMesh);
@@ -58,24 +53,24 @@ public class ThreeDimCSGTest : MonoBehaviour
             case CSG.BooleanOperations.Union:
                 {
                     SetOperation(CSG.BooleanOperations.None);
-                    resultantMeshes.AddRange(CSG.CSG.Union(m_componentA, m_componentB));
-                    //resultantMeshes.Add(CSG.CSG.Union(m_componentA, m_componentB));
+                    resultantMeshes.AddRange(CSG.CSG.Union(m_componentA, m_componentB, m_csgMeshSettings));
                     break;
                 }
             case CSG.BooleanOperations.Subtract:
                 {
                     SetOperation(CSG.BooleanOperations.None);
-                    resultantMeshes.AddRange(CSG.CSG.Subtract(m_componentA, m_componentB));
+                    resultantMeshes.AddRange(CSG.CSG.Subtract(m_componentA, m_componentB, m_csgMeshSettings));
                     break;
                 }
             case CSG.BooleanOperations.Intersect:
                 {
                     SetOperation(CSG.BooleanOperations.None);
-                    resultantMeshes.AddRange(CSG.CSG.Intersect(m_componentA, m_componentB));
+                    resultantMeshes.AddRange(CSG.CSG.Intersect(m_componentA, m_componentB, m_csgMeshSettings));
                     break;
                 }
             default:
                 {
+                    Debug.Log("Not a valid operation");
                     break;
                 }
         }
@@ -89,9 +84,9 @@ public class ThreeDimCSGTest : MonoBehaviour
             GameObject newObject = CSG.CSG.CreateObjectFromMesh(_meshes[meshIter],
                 m_componentA.GetComponent<MeshRenderer>().sharedMaterial);
 
-            if (m_makeSoftBodies)
+            if (m_csgSettings.m_makeSoftBodies)
             {
-                MSM.MSM.MakeObjectSoftbody3D(newObject);
+                MSM.MSM.MakeObjectSoftbodyObject(newObject, m_sbSettings);
             }
         }
     }

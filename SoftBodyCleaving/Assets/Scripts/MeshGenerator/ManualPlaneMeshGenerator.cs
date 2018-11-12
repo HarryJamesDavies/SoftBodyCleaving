@@ -1,4 +1,4 @@
-﻿using System.Collections;
+﻿using MSM;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -18,10 +18,14 @@ public class ManualPlaneMeshGenerator : MonoBehaviour
     public Color m_colour;
     public Vector3Int m_sections;
     public Vector3Int m_dimensions;
+    private Vector2 m_UVDelta;
 
     public bool m_useWorldSpace = true;
+    public bool m_makeSoftBody = false;
     public bool m_backfaceCulling = false;
-    public bool m_generateSoftBody = false;
+    public float m_backFaceOffset = 0.01f;
+
+    [SerializeField] private SoftBodySettings m_settings = new SoftBodySettings();
 
     private void Awake()
     {
@@ -38,15 +42,16 @@ public class ManualPlaneMeshGenerator : MonoBehaviour
         GenerateVertices();
         UpdateMesh();
 
-        if(m_generateSoftBody)
+        if(m_makeSoftBody)
         {
-            MSM.MSM.MakeObjectSoftbody3D(gameObject);
+            MSM.MSM.MakeObjectSoftbodyObject(gameObject, m_settings);
         }
     }
 
     void GenerateVertices()
     {
         m_sections.z = m_sections.x * m_sections.y;
+        m_UVDelta = new Vector2(1.0f / m_sections.x, 1.0f / m_sections.y);
 
         for (int x = 0; x <= m_sections.x; x++)
         {
@@ -71,25 +76,6 @@ public class ManualPlaneMeshGenerator : MonoBehaviour
         }
     }
 
-    private void GenerateSection(float _X, float _Y)
-    {
-        float startX = _X * m_dimensions.x;
-        float startY = _Y * m_dimensions.y;
-
-        Vector3 position = new Vector3(startX, startY, 0.0f);
-        AddVertex(position, m_colour);
-
-        position.x = startX + m_dimensions.x;
-        AddVertex(position, m_colour);
-
-        position.x = startX;
-        position.y = startY + m_dimensions.y;
-        AddVertex(position, m_colour);
-
-        position.x = startX + m_dimensions.x;
-        AddVertex(position, m_colour);
-    }
-
     private void GenerateColumn(float _X)
     {
         float startX = _X * m_dimensions.x;
@@ -99,17 +85,17 @@ public class ManualPlaneMeshGenerator : MonoBehaviour
         for (int yIter = 0; yIter <= m_sections.y; yIter++)
         {
             position.y = yIter * m_dimensions.y;
-            AddVertex(position, m_colour);
+            AddVertex(position);
+            m_uvs.Add(new Vector2(m_UVDelta.x * _X, m_UVDelta.y * yIter));
         }
     }
 
-    void AddVertex(Vector3 _position, Color _colour)
+    void AddVertex(Vector3 _position)
     {
         if (!m_vertices.Contains(_position))
         {
             m_vertices.Add(_position);
-            m_uvs.Add(new Vector2(0.0f, 0.0f));
-            m_colours.Add(_colour);
+            m_colours.Add(m_colour);
         }
     }
 
@@ -144,16 +130,39 @@ public class ManualPlaneMeshGenerator : MonoBehaviour
 
     void GenerateBackFace()
     {
-        GenerateAntiClockWiseTriangles();
+        int firstVertex = m_vertices.Count;
+
+        Vector3 U = m_vertices[1] - m_vertices[0];
+        Vector3 V = m_vertices[2] - m_vertices[0];
+        Vector3 planeNormal = Vector3.Cross(U, V);
+        Vector3 backFaceOffset = planeNormal * m_backFaceOffset;
+
+        List<Vector3> backVertices = new List<Vector3>();
+        for (int vertexIter = 0; vertexIter < m_vertices.Count; vertexIter++)
+        {
+            backVertices.Add(m_vertices[vertexIter] - backFaceOffset);
+            m_colours.Add(m_colour);
+        }
+        m_vertices.AddRange(backVertices);
+
+        for (int X = 0; X <= m_sections.x; X++)
+        {
+            for (int Y = 0; Y <= m_sections.y; Y++)
+            {
+                m_uvs.Add(new Vector2(m_UVDelta.x * X, m_UVDelta.y * Y));
+            }
+        }
+
+        GenerateBackFaceTriangles(firstVertex);
     }
 
-    void GenerateAntiClockWiseTriangles()
+    void GenerateBackFaceTriangles(int _firstVertex)
     {
         int startIndex, vertexA, vertexB, vertexC, vertexD = 0;
 
         for (int xIter = 0; xIter < m_sections.x; xIter++)
         {
-            startIndex = (xIter * m_sections.y) + xIter;
+            startIndex = (xIter * m_sections.y) + xIter + _firstVertex;
             vertexA = startIndex;
             vertexB = startIndex + 1;
             vertexC = startIndex + (m_sections.y + 1);

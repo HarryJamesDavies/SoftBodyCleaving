@@ -1,4 +1,4 @@
-﻿using System;
+﻿using MSM;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -16,7 +16,7 @@ public class IntersectionResult
 
 public class LineSlicer
 {
-    public static void CutChains(Vector3 _sliceStartPosition, Vector3 _sliceEndPosition, bool _makeSoftBody)
+    public static void CutChains(Vector3 _sliceStartPosition, Vector3 _sliceEndPosition, SoftBodySettings _settings = null)
     {
         List<Chain> chains = ChainPool.s_instance.GetChains();
         Dictionary<int, IntersectionResult> results = new Dictionary<int, IntersectionResult>();
@@ -27,10 +27,13 @@ public class LineSlicer
             if (result != null)
             {
                 results.Add(chainIter, result);
-                if (_makeSoftBody)
+                if (_settings != null)
                 {
-                    MSM.MSM.MakeObjectSoftbody1D(result.m_upperChain.gameObject, result.m_upperChain);
-                    MSM.MSM.MakeObjectSoftbody1D(result.m_lowerChain.gameObject, result.m_lowerChain);
+                    MSM.MSM.MakeObjectSoftbodyChain(result.m_upperChain.gameObject, result.m_upperChain, _settings);
+                    result.m_upperChain.gameObject.AddComponent<MeshExamine>().m_mesh = result.m_upperChain.gameObject.GetComponent<MeshFilter>();
+
+                    MSM.MSM.MakeObjectSoftbodyChain(result.m_lowerChain.gameObject, result.m_lowerChain, _settings);
+                    result.m_lowerChain.gameObject.AddComponent<MeshExamine>().m_mesh = result.m_lowerChain.gameObject.GetComponent<MeshFilter>();
                 }
             }
 
@@ -100,8 +103,7 @@ public class LineSlicer
             _chain.m_mesh.vertices[_chain.m_vertexGroups[data.m_intersectionPoint].m_vertices[1]];
         Vector3 rightCutPosition = _chain.m_mesh.vertices[_chain.m_vertexGroups[data.m_intersectionPoint].m_vertices[1]] +
             (rightDelta * data.m_intersectionDelta);
-
-        Debug.Log(data.m_intersectionPoint);
+        
         int upperVertexIntersection = (data.m_intersectionPoint + 1) * 2;
         if (upperVertexIntersection < 0)
         {
@@ -255,18 +257,11 @@ public class LineSlicer
 
         for (int groupIter = _firstVertexGroup; groupIter <= _lastVertexGroup; groupIter++)
         {
-            try
-            {
-                vertices.Add(_chain.m_mesh.vertices[_chain.m_vertexGroups[groupIter].m_vertices[0]]);
-                normals.Add(Vector3.one);
+            vertices.Add(_chain.m_mesh.vertices[_chain.m_vertexGroups[groupIter].m_vertices[0]]);
+            normals.Add(Vector3.one);
 
-                vertices.Add(_chain.m_mesh.vertices[_chain.m_vertexGroups[groupIter].m_vertices[1]]);
-                normals.Add(Vector3.one);
-            }
-            catch (ArgumentOutOfRangeException ex)
-            {
-                Debug.Log("Hi");
-            }
+            vertices.Add(_chain.m_mesh.vertices[_chain.m_vertexGroups[groupIter].m_vertices[1]]);
+            normals.Add(Vector3.one);
         }
 
         if (_upper)

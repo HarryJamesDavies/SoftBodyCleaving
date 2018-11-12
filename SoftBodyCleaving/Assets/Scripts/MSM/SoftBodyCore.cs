@@ -1,208 +1,293 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
+using UnityEngine.Events;
 
-public class SoftBodyCore : MonoBehaviour
+namespace MSM
 {
-    public struct GPUSpring
+    public class SoftBodyCore : MonoBehaviour
     {
-        public uint massA;
-        public uint massB;
-        public float equilibriumDistance;
-    }
-
-    struct GPUMass
-    {
-        public Vector3 position;
-        public Vector3 normal;
-        public Vector3 velocity;
-        public int resultantForceX;
-        public int resultantForceY;
-        public int resultantForceZ;
-    }
-
-    private const int THREADSPERPASS = 5;
-
-    public SoftBodyMesh m_softBody;
-    private ComputeShader m_gpuSoftBody;
-
-    private ComputeBuffer m_massBuffer;
-    private ComputeBuffer m_springBuffer;
-
-    private GPUMass[] m_masses;
-    private GPUSpring[] m_springs;
-
-    private int m_clearKernel;
-    private int m_calculateKernel;
-    private int m_displacementKernel;
-
-    private bool m_initialise = false;
-    private bool m_enabled = true;
-
-    private void OnDestroy()
-    {
-        if (m_initialise)
+        public struct GPUSpring
         {
-            m_massBuffer.Release();
-
-            m_springBuffer.Release();
-        }
-    }
-
-    public void Initialise(SoftBodyMesh _mesh)
-    {
-        m_softBody = _mesh;
-        m_gpuSoftBody = ComputeShader.Instantiate(Resources.Load<ComputeShader>("GPUSoftBody"));
-
-        if (m_softBody)
-        {
-            GenerateGPUData();
-            SetupShader();
-            m_initialise = true;
-        }
-        else
-        {
-            m_initialise = false;
-        }
-    }
-
-    private void GenerateGPUData()
-    {
-        m_masses = new GPUMass[m_softBody.m_masses.Count + m_softBody.m_masses.Count % THREADSPERPASS];
-        for (int massIter = 0; massIter < m_softBody.m_masses.Count; massIter++)
-        {
-            m_masses[massIter] = new GPUMass();
-            m_masses[massIter].position = m_softBody.transform.TransformPoint(
-                m_softBody.GetVertex(m_softBody.m_masses[massIter].vertexGroup.m_vertices[0]));
-            m_masses[massIter].velocity = Vector3.zero;
-            m_masses[massIter].resultantForceX = 0;
-            m_masses[massIter].resultantForceY = 0;
-            m_masses[massIter].resultantForceZ = 0;
+            public uint massA;
+            public uint massB;
+            public float equilibriumDistance;
         }
 
-        for (int massPadding = m_softBody.m_masses.Count; massPadding < m_softBody.m_masses.Count % THREADSPERPASS; massPadding++)
+        struct GPUMass
         {
-            m_masses[massPadding] = new GPUMass();
-            m_masses[massPadding].position = Vector3.zero;
-            m_masses[massPadding].velocity = Vector3.zero;
-            m_masses[massPadding].resultantForceX = 0;
-            m_masses[massPadding].resultantForceY = 0;
-            m_masses[massPadding].resultantForceZ = 0;
+            public Vector3 position;
+            public Vector3 normal;
+            public Vector3 velocity;
+            public int resultantForceX;
+            public int resultantForceY;
+            public int resultantForceZ;
         }
 
-        m_springs = new GPUSpring[m_softBody.m_springs.Count + m_softBody.m_springs.Count % THREADSPERPASS];
-        for (int springIter = 0; springIter < m_softBody.m_springs.Count; springIter++)
+        private const int THREADSPERPASS = 16;
+
+        public SoftBodyMesh m_softBody;
+        private ComputeShader m_gpuSoftBody;
+
+        private ComputeBuffer m_massBuffer;
+        private ComputeBuffer m_springBuffer;
+        private ComputeBuffer m_sphereColliderBuffer;
+
+        private GPUMass[] m_masses;
+        private GPUSpring[] m_springs;
+        public GPUSphereCollider[] m_sphereColliders;
+
+        private int m_clearKernel;
+        private int m_springKernel;
+        private int m_sphereColliderKernel;
+        private int m_displacementKernel;
+
+        private bool m_initialise = false;
+        private bool m_enabled = true;
+        
+        private void OnDestroy()
         {
-            m_springs[springIter] = new GPUSpring();
-            m_springs[springIter].massA = (uint)m_softBody.m_springs[springIter].massA;
-            m_springs[springIter].massB = (uint)m_softBody.m_springs[springIter].massB;
-            m_springs[springIter].equilibriumDistance = m_softBody.m_springs[springIter].equilibriumDistance;
-        }
-
-        for (int springPadding = m_softBody.m_springs.Count; springPadding < m_softBody.m_springs.Count % THREADSPERPASS; springPadding++)
-        {
-            m_springs[springPadding] = new GPUSpring();
-            m_springs[springPadding].massA = 0;
-            m_springs[springPadding].massB = 0;
-            m_springs[springPadding].equilibriumDistance = 0;
-
-        }
-    }
-
-    private void SetupShader()
-    {
-        m_massBuffer = new ComputeBuffer(m_masses.Length, 48);
-        m_massBuffer.SetData(m_masses);
-        m_springBuffer = new ComputeBuffer(m_springs.Length, 12);
-        m_springBuffer.SetData(m_springs);
-
-        m_gpuSoftBody.SetFloat("capSpringForce", m_softBody.m_capSpringForce);
-        m_gpuSoftBody.SetFloat("springCoefficient", m_softBody.m_springCoefficient);
-        m_gpuSoftBody.SetFloat("dragCoefficient", m_softBody.m_dragCoefficient);
-        m_gpuSoftBody.SetFloat("pressureCoefficient", (m_softBody.m_usePressure) ? 
-            m_softBody.m_pressureCoefficient : 0.0f);
-
-        m_clearKernel = m_gpuSoftBody.FindKernel("ClearForces");
-        m_gpuSoftBody.SetBuffer(m_clearKernel, "masses", m_massBuffer);
-
-        m_calculateKernel = m_gpuSoftBody.FindKernel("CalculateForces");
-        m_gpuSoftBody.SetBuffer(m_calculateKernel, "masses", m_massBuffer);
-        m_gpuSoftBody.SetBuffer(m_calculateKernel, "springs", m_springBuffer);
-
-        m_displacementKernel = m_gpuSoftBody.FindKernel("CalculateDisplacement");
-        m_gpuSoftBody.SetBuffer(m_displacementKernel, "masses", m_massBuffer);
-    }
-
-    private void Update()
-    {
-        if (m_initialise && m_enabled)
-        {
-            UpdateVariables();
-
-            DispatchShader();
-
-            for (int massIter = 0; massIter < m_softBody.m_masses.Count; massIter++)
+            if (m_initialise)
             {
-                ApplyDisplacement(m_softBody.m_masses[massIter]);
+                m_massBuffer.Release();
+
+                m_springBuffer.Release();
+
+                if (m_sphereColliderBuffer != null)
+                {
+                    if (m_sphereColliderBuffer.IsValid())
+                    {
+                        m_sphereColliderBuffer.Release();
+                    }
+                }
+
+                GeneralForces.s_instance.m_sphereColliderUpdate -= UpdateSphereColliders;
+            }
+        }
+
+        public void Initialise(SoftBodyMesh _mesh)
+        {
+            m_softBody = _mesh;
+            m_gpuSoftBody = ComputeShader.Instantiate(Resources.Load<ComputeShader>("GPUSoftBody"));
+
+            GeneralForces.s_instance.m_sphereColliderUpdate += UpdateSphereColliders;
+            if (GeneralForces.s_instance.GetSphereColliderCount() > 0)
+            {
+                UpdateSphereColliders();
             }
 
-
-            m_softBody.UpdateMesh();
+            if (m_softBody)
+            {
+                GenerateGPUData();
+                SetupShader();
+                m_initialise = true;
+            }
+            else
+            {
+                m_initialise = false;
+            }
         }
-    }
 
-    private void UpdateVariables()
-    {
-        m_gpuSoftBody.SetFloat("capSpringForce", m_softBody.m_capSpringForce);
-        m_gpuSoftBody.SetFloat("springCoefficient", m_softBody.m_springCoefficient);
-        m_gpuSoftBody.SetFloat("dragCoefficient", m_softBody.m_dragCoefficient);
-        m_gpuSoftBody.SetFloat("pressureCoefficient", (m_softBody.m_usePressure) ?
-            m_softBody.m_pressureCoefficient : 0.0f);
-    }
-
-    void DispatchShader()
-    {
-        UpdateGPUMasses();
-
-        m_gpuSoftBody.SetFloat("deltaTime", Time.deltaTime);
-        m_gpuSoftBody.SetVector("globalForce", GlobalForces.s_instance.GetGlobalForce());
-
-        m_gpuSoftBody.Dispatch(m_clearKernel, m_masses.Length / THREADSPERPASS, 1, 1);
-        m_gpuSoftBody.Dispatch(m_calculateKernel, m_springs.Length / THREADSPERPASS, 1, 1);
-        m_gpuSoftBody.Dispatch(m_displacementKernel, m_masses.Length / THREADSPERPASS, 1, 1);
-
-        UpdateCPUMasses();
-    }
-
-    void UpdateGPUMasses()
-    {
-        for (int massIter = 0; massIter < m_softBody.m_masses.Count; massIter++)
+        private void GenerateGPUData()
         {
-            m_masses[massIter].position = m_softBody.GetVertex(m_softBody.m_masses[massIter].vertexGroup.m_vertices[0]);
-            m_masses[massIter].normal = m_softBody.m_masses[massIter].vertexGroup.m_sharedNormal;
-        }
-        m_massBuffer.SetData(m_masses);
-    }
+            int nPaddingMasses = THREADSPERPASS - (m_softBody.m_masses.Count % THREADSPERPASS);
+            m_masses = new GPUMass[m_softBody.m_masses.Count + nPaddingMasses];
+            for (int massIter = 0; massIter < m_softBody.m_masses.Count; massIter++)
+            {
+                m_masses[massIter] = new GPUMass();
+                m_masses[massIter].position = m_softBody.transform.TransformPoint(
+                    m_softBody.m_masses[massIter].GetPostion());
+                m_masses[massIter].velocity = Vector3.zero;
+                m_masses[massIter].resultantForceX = 0;
+                m_masses[massIter].resultantForceY = 0;
+                m_masses[massIter].resultantForceZ = 0;
+            }
 
-    void UpdateCPUMasses()
-    {
-        m_massBuffer.GetData(m_masses);
-        for (int massIter = 0; massIter < m_softBody.m_masses.Count; massIter++)
+            for (int massPadding = m_softBody.m_masses.Count; massPadding < m_masses.Length; massPadding++)
+            {
+                m_masses[massPadding] = new GPUMass();
+                m_masses[massPadding].position = Vector3.zero;
+                m_masses[massPadding].velocity = Vector3.zero;
+                m_masses[massPadding].resultantForceX = 0;
+                m_masses[massPadding].resultantForceY = 0;
+                m_masses[massPadding].resultantForceZ = 0;
+            }
+
+            int nPaddingSprings = THREADSPERPASS - (m_softBody.m_springs.Count % THREADSPERPASS);
+            m_springs = new GPUSpring[m_softBody.m_springs.Count + nPaddingSprings];
+            for (int springIter = 0; springIter < m_softBody.m_springs.Count; springIter++)
+            {
+                m_springs[springIter] = new GPUSpring();
+                m_springs[springIter].massA = (uint)m_softBody.m_springs[springIter].massA;
+                m_springs[springIter].massB = (uint)m_softBody.m_springs[springIter].massB;
+                m_springs[springIter].equilibriumDistance = m_softBody.m_springs[springIter].equilibriumDistance;
+            }
+
+            for (int springPadding = m_softBody.m_springs.Count; springPadding < m_springs.Length; springPadding++)
+            {
+                m_springs[springPadding] = new GPUSpring();
+                m_springs[springPadding].massA = 0;
+                m_springs[springPadding].massB = 0;
+                m_springs[springPadding].equilibriumDistance = 0;
+            }
+        }
+
+        private void SetupShader()
         {
-            m_softBody.m_masses[massIter].velocity = m_masses[massIter].velocity;
-        }
-    }
+            m_massBuffer = new ComputeBuffer(m_masses.Length, 48);
+            m_massBuffer.SetData(m_masses);
+            m_springBuffer = new ComputeBuffer(m_springs.Length, 12);
+            m_springBuffer.SetData(m_springs);
 
-    void ApplyDisplacement(Mass _mass)
-    {
-        if (!_mass.m_fixed)
+            m_gpuSoftBody.SetFloat("capSpringForce", m_softBody.m_settings.m_capSpringForce);
+            m_gpuSoftBody.SetFloat("springCoefficient", m_softBody.m_settings.m_springCoefficient);
+            m_gpuSoftBody.SetFloat("dragCoefficient", m_softBody.m_settings.m_dragCoefficient);
+            m_gpuSoftBody.SetFloat("pressureCoefficient", (m_softBody.m_settings.m_usePressure) ?
+                m_softBody.m_settings.m_pressureCoefficient : 0.0f);
+
+            float[] position = new float[3];
+            position[0] = transform.position.x;
+            position[1] = transform.position.y;
+            position[2] = transform.position.z;
+            m_gpuSoftBody.SetFloats("worldPosition", position);
+
+            float[] scale = new float[3];
+            scale[0] = transform.localScale.x;
+            scale[1] = transform.localScale.y;
+            scale[2] = transform.localScale.z;
+            m_gpuSoftBody.SetFloats("localScale", scale);
+
+            m_clearKernel = m_gpuSoftBody.FindKernel("ClearForces");
+            m_gpuSoftBody.SetBuffer(m_clearKernel, "masses", m_massBuffer);
+
+            m_springKernel = m_gpuSoftBody.FindKernel("CalculateSpringForces");
+            m_gpuSoftBody.SetBuffer(m_springKernel, "masses", m_massBuffer);
+            m_gpuSoftBody.SetBuffer(m_springKernel, "springs", m_springBuffer);
+
+            m_sphereColliderKernel = m_gpuSoftBody.FindKernel("CalculateSphereColliders");
+            m_gpuSoftBody.SetBuffer(m_sphereColliderKernel, "masses", m_massBuffer);
+
+            m_displacementKernel = m_gpuSoftBody.FindKernel("CalculateDisplacement");
+            m_gpuSoftBody.SetBuffer(m_displacementKernel, "masses", m_massBuffer);
+        }
+
+        private void Update()
         {
-            m_softBody.DisplaceVertex(_mass.vertexGroup, _mass.velocity * Time.deltaTime);
-        }
-    }
+            if (m_initialise && m_enabled)
+            {
+                UpdateVariables();
 
-    public void SetEnabled(bool _state)
-    {
-        m_enabled = _state;
+                DispatchShader();
+
+                for (int massIter = 0; massIter < m_softBody.m_masses.Count; massIter++)
+                {
+                    ApplyDisplacement(m_softBody.m_masses[massIter]);
+                }
+
+                m_softBody.UpdateMesh();
+            }
+        }
+
+        private void UpdateVariables()
+        {
+            m_gpuSoftBody.SetFloat("capSpringForce", m_softBody.m_settings.m_capSpringForce);
+            m_gpuSoftBody.SetFloat("springCoefficient", m_softBody.m_settings.m_springCoefficient);
+            m_gpuSoftBody.SetFloat("dragCoefficient", m_softBody.m_settings.m_dragCoefficient);
+            m_gpuSoftBody.SetFloat("pressureCoefficient", (m_softBody.m_settings.m_usePressure) ?
+                m_softBody.m_settings.m_pressureCoefficient : 0.0f);
+
+            float[] position = new float[3];
+            position[0] = transform.position.x;
+            position[1] = transform.position.y;
+            position[2] = transform.position.z;
+            m_gpuSoftBody.SetFloats("worldPosition", position);
+
+            float[] scale = new float[3];
+            scale[0] = transform.localScale.x;
+            scale[1] = transform.localScale.y;
+            scale[2] = transform.localScale.z;
+            m_gpuSoftBody.SetFloats("localScale", scale);
+        }
+
+        public void UpdateSphereColliders()
+        {
+            if(m_sphereColliderBuffer != null)
+            {
+                if(m_sphereColliderBuffer.IsValid())
+                {
+                    m_sphereColliderBuffer.Dispose();
+                    m_sphereColliderBuffer.Release();
+                }
+            }
+            m_sphereColliders = GeneralForces.s_instance.GetSphereColliders();
+            m_sphereColliderBuffer = new ComputeBuffer(m_sphereColliders.Length, 20);
+            m_sphereColliderBuffer.SetData(m_sphereColliders);
+            m_gpuSoftBody.SetBuffer(m_sphereColliderKernel, "sphereColliders", m_sphereColliderBuffer);
+
+            m_gpuSoftBody.SetInt("numSphereColliders", m_sphereColliders.Length);
+        }
+
+        void DispatchShader()
+        {
+            UpdateGPUMasses();
+
+            m_gpuSoftBody.SetFloat("deltaTime", Time.deltaTime);
+            m_gpuSoftBody.SetVector("globalForce", GeneralForces.s_instance.GetGlobalForce());
+
+            int massesPerPass = m_masses.Length / THREADSPERPASS;
+            int springsPerPass = m_springs.Length / THREADSPERPASS;
+
+            m_gpuSoftBody.Dispatch(m_clearKernel, massesPerPass, 1, 1);
+            m_gpuSoftBody.Dispatch(m_springKernel, springsPerPass, 1, 1);
+
+            if (m_sphereColliders != null && m_softBody.m_settings.m_useCollisions)
+            {
+                if (m_sphereColliders.Length > 0)
+                {
+                    m_gpuSoftBody.Dispatch(m_sphereColliderKernel, massesPerPass, 1, 1);
+                }
+            }
+
+            m_gpuSoftBody.Dispatch(m_displacementKernel, massesPerPass, 1, 1);
+
+            UpdateCPUMasses();
+        }
+
+        void UpdateGPUMasses()
+        {
+            for (int massIter = 0; massIter < m_softBody.m_masses.Count; massIter++)
+            {
+                m_masses[massIter].position = m_softBody.m_masses[massIter].GetPostion();
+                m_masses[massIter].normal = m_softBody.m_masses[massIter].GetNormal();
+            }
+            m_massBuffer.SetData(m_masses);
+        }
+
+        void UpdateCPUMasses()
+        {
+            m_massBuffer.GetData(m_masses);
+            for (int massIter = 0; massIter < m_softBody.m_masses.Count; massIter++)
+            {
+                m_softBody.m_masses[massIter].velocity = m_masses[massIter].velocity;
+            }
+        }
+
+        void ApplyDisplacement(Mass _mass)
+        {
+            if (!_mass.m_fixed)
+            {
+                if (_mass.vertexGroup != null)
+                {
+                    m_softBody.DisplaceVertex(_mass.vertexGroup, _mass.velocity * Time.deltaTime);
+                }
+                else
+                {
+                    _mass.m_postion += _mass.velocity * Time.deltaTime;
+                }
+            }
+        }
+
+        public void SetEnabled(bool _state)
+        {
+            m_enabled = _state;
+        }
     }
 }
