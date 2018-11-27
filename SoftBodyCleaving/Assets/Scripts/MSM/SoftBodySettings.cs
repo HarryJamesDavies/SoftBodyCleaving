@@ -18,12 +18,19 @@ namespace MSM
         public float m_fixedOffset = 5.0f;
 
         public bool m_initialiseOnStart = false;
+        public bool m_initialiseOnUpdate = false;
         public bool m_useMeshInstance = true;
 
         public bool m_useInternals = true;
         public float m_internalOffset = 0.1f;
 
         public bool m_useCollisions = false;
+
+        public bool m_useSelfCollisions = false;
+        public float m_selfCollisionRadius = 1.0f;
+        public float m_selfCollisionForceCoefficient = 10.0f;
+
+        public bool m_useSphereCollisions = false;
 
         public SoftBodySettings(SoftBodySettings _settings)
         {
@@ -45,6 +52,12 @@ namespace MSM
             m_internalOffset = _settings.m_internalOffset;
 
             m_useCollisions = _settings.m_useCollisions;
+
+            m_useSelfCollisions = _settings.m_useSelfCollisions;
+            m_selfCollisionRadius = _settings.m_selfCollisionRadius;
+            m_selfCollisionForceCoefficient = _settings.m_selfCollisionForceCoefficient;
+
+            m_useSphereCollisions = _settings.m_useSphereCollisions;
         }
 
         public SoftBodySettings()

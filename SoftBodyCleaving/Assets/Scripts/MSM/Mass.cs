@@ -13,6 +13,7 @@ namespace MSM
         public SoftBodyMesh mesh;
         public List<int> springs;
         public List<int> neighbours;
+        public List<int> structuralNeighbours;
         public Vector3 force;
         public Vector3 velocity;
         public Vector3 m_normal;
@@ -27,6 +28,7 @@ namespace MSM
             index = _index;
             springs = new List<int>();
             neighbours = new List<int>();
+            structuralNeighbours = new List<int>();
             force = Vector3.zero;
             velocity = Vector3.zero;
             m_fixed = _fixed;
@@ -41,6 +43,7 @@ namespace MSM
             index = _index;
             springs = new List<int>();
             neighbours = new List<int>();
+            structuralNeighbours = new List<int>();
             force = Vector3.zero;
             velocity = Vector3.zero;
             m_fixed = _fixed;
@@ -75,12 +78,33 @@ namespace MSM
             }
         }
 
+        public void AddStructuralNeighbour(int _mass)
+        {
+            if (!structuralNeighbours.Contains(_mass))
+            {
+                structuralNeighbours.Add(_mass);
+                neighbours.Add(_mass);
+            }
+        }
+
         public void AddNeighbours(List<int> _masses)
         {
             for (int massIter = 0; massIter < _masses.Count; massIter++)
             {
                 if (!neighbours.Contains(_masses[massIter]))
                 {
+                    neighbours.Add(_masses[massIter]);
+                }
+            }
+        }
+
+        public void AddStructuralNeighbours(List<int> _masses)
+        {
+            for (int massIter = 0; massIter < _masses.Count; massIter++)
+            {
+                if (!structuralNeighbours.Contains(_masses[massIter]))
+                {
+                    structuralNeighbours.Add(_masses[massIter]);
                     neighbours.Add(_masses[massIter]);
                 }
             }

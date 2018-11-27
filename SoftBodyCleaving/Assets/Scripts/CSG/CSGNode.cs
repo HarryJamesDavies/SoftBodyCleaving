@@ -7,42 +7,42 @@ using UnityEngine;
 namespace CSG
 {
     public class CSGNode
-	{
-		public List<CSGPolygon> m_polygons;
+    {
+        public List<CSGPolygon> m_polygons;
 
-		public CSGNode m_frontNode;	
-		public CSGNode m_backNode;	
+        public CSGNode m_frontNode;
+        public CSGNode m_backNode;
 
-		public CSGPlane m_plane;
+        public CSGPlane m_plane;
 
         private const int C_MaxRecursions = 100000;
 
 
         public CSGNode()
-		{
-			m_frontNode = null;
-			m_backNode = null;
-		}
+        {
+            m_frontNode = null;
+            m_backNode = null;
+        }
 
-		public CSGNode(List<CSGPolygon> _polygons)
-		{
-			Build(_polygons);
-		}
+        public CSGNode(List<CSGPolygon> _polygons)
+        {
+            Build(_polygons);
+        }
 
-		public CSGNode(List<CSGPolygon> _polygons, CSGPlane _plane, CSGNode _frontNode, CSGNode _backNode)
-		{
-			m_polygons = _polygons;
-			m_plane = _plane;
-			m_frontNode = _frontNode;
-			m_backNode = _backNode;
-		}
+        public CSGNode(List<CSGPolygon> _polygons, CSGPlane _plane, CSGNode _frontNode, CSGNode _backNode)
+        {
+            m_polygons = _polygons;
+            m_plane = _plane;
+            m_frontNode = _frontNode;
+            m_backNode = _backNode;
+        }
 
-		public CSGNode Clone()
-		{
-			CSGNode clone = new CSGNode(m_polygons, m_plane, m_frontNode, m_backNode);
+        public CSGNode Clone()
+        {
+            CSGNode clone = new CSGNode(m_polygons, m_plane, m_frontNode, m_backNode);
 
-			return clone;
-		}
+            return clone;
+        }
 
         public CSGNode DeepClone()
         {
@@ -81,28 +81,28 @@ namespace CSG
 
         // Convert solid space to empty space and empty space to solid space.
         public void Invert()
-		{
+        {
             for (int i = 0; i < m_polygons.Count; i++)
             {
                 m_polygons[i].Flip();
             }
 
-			m_plane.Flip();
+            m_plane.Flip();
 
-			if (m_frontNode != null)
-			{
-				m_frontNode.Invert();
-			}
+            if (m_frontNode != null)
+            {
+                m_frontNode.Invert();
+            }
 
-			if (m_backNode != null)
-			{
-				m_backNode.Invert();
-			}
+            if (m_backNode != null)
+            {
+                m_backNode.Invert();
+            }
 
-			CSGNode tempNode = m_frontNode;
-			m_frontNode = m_backNode;
-			m_backNode = tempNode;
-		}
+            CSGNode tempNode = m_frontNode;
+            m_frontNode = m_backNode;
+            m_backNode = tempNode;
+        }
 
         // Build a BSP tree out of `polygons`. When called on an existing tree, the
         // new polygons are filtered down to the bottom of the tree and become new
@@ -180,7 +180,7 @@ namespace CSG
 
             List<CSGPolygon> frontPolygons = new List<CSGPolygon>();
             List<CSGPolygon> backPolygons = new List<CSGPolygon>();
-            
+
             for (int polygonIter = 0; polygonIter < _polygons.Count; polygonIter++)
             {
                 m_plane.SplitPolygon(_polygons[polygonIter], frontPolygons, backPolygons, frontPolygons, backPolygons);
@@ -218,20 +218,20 @@ namespace CSG
             }
 
             if (m_frontNode != null)
-			{
-				frontPolygons = m_frontNode.AllPolygons(_recursionCount + 1);
-			}
+            {
+                frontPolygons = m_frontNode.AllPolygons(_recursionCount + 1);
+            }
 
-			if (m_backNode != null)
-			{
-				backPolygons = m_backNode.AllPolygons(_recursionCount + 1);
-			}
+            if (m_backNode != null)
+            {
+                backPolygons = m_backNode.AllPolygons(_recursionCount + 1);
+            }
 
-			polygons.AddRange(frontPolygons);
-			polygons.AddRange(backPolygons);
+            polygons.AddRange(frontPolygons);
+            polygons.AddRange(backPolygons);
 
-			return polygons;
-		}
+            return polygons;
+        }
 
         #region STATIC OPERATIONS
 
@@ -293,6 +293,7 @@ namespace CSG
 
             CSGNode nodeA = _nodeAIn.Clone();
             CSGNode nodeB = _nodeBIn.Clone();
+            nodeA.ClipTo(nodeB);
             nodeA.Build(nodeB.AllPolygons());
 
             CSGModel resultantModel = new CSGModel(nodeA.AllPolygons());
@@ -309,7 +310,7 @@ namespace CSG
             List<Mesh> resultantMeshes = new List<Mesh>();
 
             CSGNode nodeA = _nodeAIn.Clone();
-			CSGNode nodeB = _nodeBIn.Clone();
+            CSGNode nodeB = _nodeBIn.Clone();
 
             nodeA.Invert();
             nodeA.ClipTo(nodeB);
@@ -334,7 +335,7 @@ namespace CSG
             }
 
             return resultantMeshes;
-		}
+        }
 
         // Return a new CSG solid representing space in this solid but not in the
         // solid `csg`. Neither this solid nor the solid `csg` are modified.
@@ -350,7 +351,7 @@ namespace CSG
             CSGNode nodeD = _nodeDIn.Clone();
             nodeD.Invert();
             nodeC.ClipTo(nodeD);
-            
+
             CSGModel resultantModelA = new CSGModel(nodeA.AllPolygons());
             CSGModel resultantModelB = new CSGModel(nodeC.AllPolygons());
             resultantMeshes.Add(resultantModelA.ToMesh());
@@ -381,15 +382,15 @@ namespace CSG
             List<Mesh> resultantMeshes = new List<Mesh>();
 
             CSGNode nodeA = _nodeAIn.Clone();
-			CSGNode nodeB = _nodeBIn.Clone();
+            CSGNode nodeB = _nodeBIn.Clone();
 
-			nodeA.Invert();
-			nodeB.ClipTo(nodeA);
-			nodeB.Invert();
-			nodeA.ClipTo(nodeB);
-			nodeB.ClipTo(nodeA);
-			nodeA.Build(nodeB.AllPolygons());
-			nodeA.Invert();
+            nodeA.Invert();
+            nodeB.ClipTo(nodeA);
+            nodeB.Invert();
+            nodeA.ClipTo(nodeB);
+            nodeB.ClipTo(nodeA);
+            nodeA.Build(nodeB.AllPolygons());
+            nodeA.Invert();
 
             CSGModel resultModel = new CSGModel(nodeA.AllPolygons());
             if (resultModel.SubDivideMesh(_meshSettings))
@@ -404,6 +405,31 @@ namespace CSG
                 resultantMeshes.Add(resultModel.ToMesh());
             }
 
+            return resultantMeshes;
+        }
+
+        // Return a new CSG solid representing space both this solid and in the
+        // solid `csg`. Neither this solid nor the solid `csg` are modified.
+        public static List<Mesh> NVIntersect(CSGNode _nodeAIn, CSGNode _nodeBIn, CSGNode _nodeCIn,
+            CSGNode _nodeDIn, CSGNode _nodeEIn, CSGNode _nodeFIn, CSGMeshingSettings _meshSettings)
+        {
+            List<Mesh> resultantMeshes = new List<Mesh>();
+
+            CSGNode nodeA = _nodeAIn.Clone();
+            CSGNode nodeB = _nodeBIn.Clone();
+            CSGNode nodeC = _nodeCIn.Clone();
+            CSGNode nodeD = _nodeDIn.Clone();
+            CSGNode nodeE = _nodeEIn.Clone();
+            CSGNode nodeF = _nodeFIn.Clone();
+            nodeA.ClipTo(nodeB);
+            nodeA.ClipTo(nodeC);
+            nodeA.ClipTo(nodeD);
+            nodeA.ClipTo(nodeE);
+            nodeA.ClipTo(nodeF);
+
+            CSGModel resultantModels = new CSGModel(nodeA.AllPolygons());
+            resultantModels.SubDivideMesh(_meshSettings);
+            resultantMeshes.Add(resultantModels.ToMesh());
             return resultantMeshes;
         }
 

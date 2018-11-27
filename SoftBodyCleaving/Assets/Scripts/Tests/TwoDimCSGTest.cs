@@ -80,6 +80,12 @@ public class TwoDimCSGTest : MonoBehaviour
                     resultantMeshes.AddRange(CSG.CSG.NVSubtract(m_componentA, m_componentB, m_csgMeshSettings));
                     break;
                 }
+            case CSG.BooleanOperations.NVIntersect:
+                {
+                    SetOperation(CSG.BooleanOperations.None);
+                    resultantMeshes.AddRange(CSG.CSG.NVIntersect(m_componentA, m_componentB, m_csgMeshSettings));
+                    break;
+                }
             case CSG.BooleanOperations.HVUnion:
                 {
                     SetOperation(CSG.BooleanOperations.None);
@@ -113,6 +119,11 @@ public class TwoDimCSGTest : MonoBehaviour
             GameObject newObject = CSG.CSG.CreateObjectFromMesh(_meshes[meshIter],
                 m_componentA.GetComponent<MeshRenderer>().sharedMaterial);
 
+            if(SceneData.s_instance != null)
+            {
+                SceneData.s_instance.AddObjectToSpawned(newObject);
+            }
+
             if (m_csgSettings.m_makeSoftBodies)
             {
                 MSM.MSM.MakeObjectSoftbodyObject(newObject, m_sbSettings);
@@ -120,7 +131,7 @@ public class TwoDimCSGTest : MonoBehaviour
         }
     }
 
-    private void SetOperation(CSG.BooleanOperations _operation)
+    public void SetOperation(CSG.BooleanOperations _operation)
     {
         m_previousOperation = m_currentOperation;
         m_currentOperation = _operation;

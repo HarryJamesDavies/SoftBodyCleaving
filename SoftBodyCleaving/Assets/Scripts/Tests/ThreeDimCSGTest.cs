@@ -84,6 +84,11 @@ public class ThreeDimCSGTest : MonoBehaviour
             GameObject newObject = CSG.CSG.CreateObjectFromMesh(_meshes[meshIter],
                 m_componentA.GetComponent<MeshRenderer>().sharedMaterial);
 
+            if (SceneData.s_instance != null)
+            {
+                SceneData.s_instance.AddObjectToSpawned(newObject);
+            }
+
             if (m_csgSettings.m_makeSoftBodies)
             {
                 MSM.MSM.MakeObjectSoftbodyObject(newObject, m_sbSettings);
@@ -91,7 +96,7 @@ public class ThreeDimCSGTest : MonoBehaviour
         }
     }
 
-    private void SetOperation(CSG.BooleanOperations _operation)
+    public void SetOperation(CSG.BooleanOperations _operation)
     {
         m_previousOperation = m_currentOperation;
         m_currentOperation = _operation;

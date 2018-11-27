@@ -16,16 +16,34 @@ namespace MSM
         public SphereCollider m_collider;
         public float m_forceCoefficient = 50.0f;
         public float m_spacingOffset = 1.0f;
+        private bool m_initialised = false;
 
         private void Start()
         {
             GeneralForces.s_instance.AddSphereCollider(this);
+            m_initialised = true;
         }
 
         private void OnDestroy()
         {
             GeneralForces.s_instance.RemoveSphereCollider(this);
-        }        
+        }
+
+        private void OnEnable()
+        {
+            if (m_initialised)
+            {
+                GeneralForces.s_instance.AddSphereCollider(this);
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (m_initialised)
+            {
+                GeneralForces.s_instance.RemoveSphereCollider(this);
+            }
+        }       
 
         public GPUSphereCollider ToGPU()
         {

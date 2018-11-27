@@ -1,7 +1,8 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Jobs;
+using Unity.Collections;
 
 namespace MSM
 {
@@ -17,7 +18,7 @@ namespace MSM
 
     public class SoftBodyMesh : MonoBehaviour
     {
-        public MeshFilter m_meshFilter;
+        [SerializeField] private MeshFilter m_meshFilter;
 
         public List<VertexGroup> m_vertexGroups = new List<VertexGroup>();
         public List<Mass> m_masses = new List<Mass>();
@@ -49,6 +50,22 @@ namespace MSM
                     {
                         core.Initialise(this);
                     }
+                }
+            }
+        }
+
+        private void Update()
+        {
+            if(m_settings.m_initialiseOnUpdate)
+            {
+                m_settings.m_initialiseOnUpdate = false;
+                Initialise();
+                CreateSoftBodyFromMesh();
+
+                SoftBodyCore core = GetComponent<SoftBodyCore>();
+                if (core)
+                {
+                    core.Initialise(this);
                 }
             }
         }
@@ -174,14 +191,6 @@ namespace MSM
             m_normals = m_meshFilter.sharedMesh.normals.ToList();
         }
 
-        private void GenerateMassesVertexGroups()
-        {
-            for (int vertexIter = 0; vertexIter < m_vertexGroups.Count; vertexIter++)
-            {
-                CreateMass(m_vertexGroups[vertexIter]);
-            }
-        }
-
         private void GroupVertices()
         {
             List<int> groupedVertices = new List<int>();
@@ -212,6 +221,14 @@ namespace MSM
             }
         }
 
+        private void GenerateMassesVertexGroups()
+        {
+            for (int vertexIter = 0; vertexIter < m_vertexGroups.Count; vertexIter++)
+            {
+                CreateMass(m_vertexGroups[vertexIter]);
+            }
+        }
+
         private void GenerateNeighbours()
         {
             List<Mass> checkMasses = new List<Mass>();
@@ -232,6 +249,58 @@ namespace MSM
                 checkStart++;
             }
             checkMasses.Clear();
+        }
+
+        private void GenerateNeighboursJob()
+        {
+            List<JobHandle> handles = new List<JobHandle>();
+
+            List<Vector3> positions = new List<Vector3>();
+            m_masses.ForEach(X => positions.Add(m_vertices[X.vertexGroup.m_vertices[0]]));
+            NativeArray<Vector3> jobPositions = new NativeArray<Vector3>(positions.ToArray(), Allocator.TempJob);
+            List<NativeArray<int>> jobNeighbours = new List<NativeArray<int>>();
+            for (int massIter = 0; massIter < m_masses.Count; massIter++)
+            {
+                jobNeighbours.Add(new NativeArray<int>(new int[m_masses.Count], Allocator.TempJob));
+            }
+            NativeArray<int> jobNeighbourCounts = new NativeArray<int>(new int[m_masses.Count], Allocator.TempJob);
+
+            for (int massIter = 0; massIter < m_masses.Count; massIter++)
+            {
+                MSMMeshJob job = new MSMMeshJob
+                {
+                    m_massPositions = jobPositions,
+                    m_massNeighbours = jobNeighbours[massIter],
+                    m_massIndex = massIter,
+                    m_massNeighboursCounts = jobNeighbourCounts,
+                    m_neighbourDistance = m_settings.m_neighbourDistance
+                };
+
+                if(massIter != 0)
+                {
+                    handles.Add(job.Schedule(handles.Last()));
+                }
+                else
+                {
+                    handles.Add(job.Schedule());
+                }
+            }
+            handles.Last().Complete();
+
+            int[] counts = jobNeighbourCounts.ToArray();
+            for (int massIter = 0; massIter < m_masses.Count; massIter++)
+            {
+                m_masses[massIter].AddNeighbours(jobNeighbours[massIter].Slice(
+                    0, counts[massIter]).ToList());
+            }
+
+            for (int massIter = 0; massIter < m_masses.Count; massIter++)
+            {
+                jobNeighbours[massIter].Dispose();
+            }
+
+            jobPositions.Dispose();
+            jobNeighbourCounts.Dispose();
         }
 
         private void GenerateNeighboursAlt()
@@ -342,6 +411,103 @@ namespace MSM
                     }
                 }
             }
+        }
+
+        private void GenerateNeighboursAltAlt()
+        {
+            RemoveOverlappingVertices();
+
+            for (int vertexIter = 0; vertexIter < m_meshFilter.mesh.vertexCount; vertexIter++)
+            {
+                m_vertexGroups.Add(new VertexGroup(vertexIter, m_meshFilter.mesh.normals[vertexIter]));
+                m_masses.Add(new Mass(this, m_vertexGroups.Last(),
+                    vertexIter, CheckMassFixed(m_meshFilter.mesh.normals[vertexIter])));
+            }
+
+            List<int> indices = m_meshFilter.mesh.triangles.ToList();
+
+            for (int polygonIter = 0; polygonIter < indices.Count / 3; polygonIter++)
+            {
+                int firstIndex = (polygonIter * 3);
+                int indexA = indices[firstIndex];
+                int indexB = indices[firstIndex + 1];
+                int indexC = indices[firstIndex + 2];
+
+                m_masses[indices[indexA]].AddStructuralNeighbour(indices[indexB]);
+                m_masses[indices[indexA]].AddStructuralNeighbour(indices[indexC]);
+
+                m_masses[indices[indexB]].AddStructuralNeighbour(indices[indexA]);
+                m_masses[indices[indexB]].AddStructuralNeighbour(indices[indexC]);
+
+                m_masses[indices[indexC]].AddStructuralNeighbour(indices[indexA]);
+                m_masses[indices[indexC]].AddStructuralNeighbour(indices[indexB]);
+            }
+
+            for (int massIter = 0; massIter < m_masses.Count; massIter++)
+            {
+                for (int SNIter = 0; SNIter < m_masses[massIter].structuralNeighbours.Count; SNIter++)
+                {
+                    m_masses[massIter].AddNeighbours(m_masses[m_masses[massIter].structuralNeighbours[SNIter]].structuralNeighbours);
+                }
+            }
+        }
+
+        private void RemoveOverlappingVertices()
+        {
+            List<Vector3> vertices = new List<Vector3>();
+            List<int> indices = new List<int>();
+            List<Vector2> uvs = new List<Vector2>();
+
+            //Position -> new Index
+            Dictionary<Vector3, int> vertexPositonCheckList = new Dictionary<Vector3, int>();
+
+            int existingVertex = -1;
+            for (int triangleIter = 0; triangleIter < m_triangles.Count; triangleIter++)
+            {
+                CheckMaxFixedPosition(m_vertices[m_triangles[triangleIter]]);
+
+                Vector3 currentPosition = Round(m_vertices[m_triangles[triangleIter]], 2);
+                if (!vertexPositonCheckList.TryGetValue(currentPosition, out existingVertex))
+                {
+                    vertexPositonCheckList.Add(currentPosition, vertices.Count);
+                    indices.Add(vertices.Count);
+                    vertices.Add(m_vertices[m_triangles[triangleIter]]);
+                    uvs.Add(m_uvs[m_triangles[triangleIter]]);
+                }
+                else
+                {
+                    indices.Add(existingVertex);
+                }
+
+                existingVertex = -1;
+            }
+
+            m_vertices.Clear();
+            m_vertices.AddRange(vertices);
+            m_triangles.Clear();
+            m_triangles.AddRange(indices);
+            m_uvs.Clear();
+            m_uvs.AddRange(uvs);
+
+            m_meshFilter.sharedMesh.Clear();
+            m_meshFilter.sharedMesh.vertices = m_vertices.ToArray();
+            m_meshFilter.sharedMesh.uv = m_uvs.ToArray();
+            m_meshFilter.sharedMesh.triangles = m_triangles.ToArray();
+            m_meshFilter.sharedMesh.colors = m_colours.ToArray();
+            m_meshFilter.sharedMesh.RecalculateNormals();
+        }
+
+        public Vector3 Round(Vector3 _vector, int _decimalPlaces = 2)
+        {
+            float multiplier = 1;
+            for (int i = 0; i < _decimalPlaces; i++)
+            {
+                multiplier *= 10f;
+            }
+            return new Vector3(
+                Mathf.Round(_vector.x * multiplier) / multiplier,
+                Mathf.Round(_vector.y * multiplier) / multiplier,
+                Mathf.Round(_vector.z * multiplier) / multiplier);
         }
 
         private List<int> GenerateNeighbourIndices(Vector3Int _center, Vector3 _sectionsCount)

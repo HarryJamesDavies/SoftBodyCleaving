@@ -46,12 +46,20 @@ public class LineSlicer
             {
                 resultingChains.Add(results[chainIter].m_upperChain);
                 resultingChains.Add(results[chainIter].m_lowerChain);
+
+                if (SceneData.s_instance != null)
+                {
+                    SceneData.s_instance.AddObjectToSpawned(results[chainIter].m_upperChain.gameObject);
+                    SceneData.s_instance.AddObjectToSpawned(results[chainIter].m_lowerChain.gameObject);
+                }
+
                 ChainPool.s_instance.DestroyChain(chainIter);
             }
             else
             {
                 resultingChains.Add(chains[chainIter]);
             }
+
         }
 
         ChainPool.s_instance.ReplacePool(resultingChains);
@@ -65,8 +73,8 @@ public class LineSlicer
         for (int lineIter = 0; lineIter < _chain.m_corePoints.Count - 1; lineIter++)
         {
             float cutDelta = GetIntersectionPointDelta(_sliceStartPosition, _sliceEndPosition,
-                Camera.main.WorldToScreenPoint(_chain.m_corePoints[lineIter]),
-                Camera.main.WorldToScreenPoint(_chain.m_corePoints[lineIter + 1]), out intersects);
+               _chain.m_corePoints[lineIter] + _chain.transform.localPosition,
+               _chain.m_corePoints[lineIter + 1] + _chain.transform.localPosition, out intersects);
 
             if(intersects)
             {

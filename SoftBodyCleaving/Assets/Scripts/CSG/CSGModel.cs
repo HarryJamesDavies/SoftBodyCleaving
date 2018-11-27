@@ -131,7 +131,6 @@ namespace CSG
                 if (_settings.m_waterTightMesh)
                 {
                     MakeWaterTight(_settings);
-                    //MakeWaterTightJ();
                 }
 
                 if (_settings.m_subdivideModel)

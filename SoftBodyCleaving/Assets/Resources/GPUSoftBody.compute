@@ -1,6 +1,7 @@
 ﻿#pragma kernel ClearForces
 #pragma kernel CalculateSpringForces
-#pragma kernel CalculateSphereColliders
+#pragma kernel CalculateSelfCollisions
+#pragma kernel CalculateSphereCollisions
 #pragma kernel CalculateDisplacement
 
 struct Spring
@@ -31,12 +32,19 @@ float deltaTime;
 
 float3 globalForce;
 
+float windMagnitude;
+float3 windDirection;
+
 int capSpringForce;
 float springCoefficient;
 float dragCoefficient;
 float pressureCoefficient;
 
 int numSphereColliders;
+int numMasses;
+
+float selfCollisionRadius;
+float selfCollisionForceCoefficient;
 
 float3 worldPosition;
 float3 localScale;
@@ -80,7 +88,35 @@ void CalculateSpringForces(uint3 id : SV_DispatchThreadID)
 }
 
 [numthreads(16, 1, 1)]
-void CalculateSphereColliders(uint3 id : SV_DispatchThreadID)
+void CalculateSelfCollisions(uint3 id : SV_DispatchThreadID)
+{
+	if (numMasses > 0)
+	{
+		int interactions = 0;
+
+		while (interactions < numMasses)
+		{
+			float3 massOffset = ((masses[id.x].position * localScale) + worldPosition)
+				- ((masses[interactions].position* localScale) + worldPosition);
+			float offsetMagnitude = length(massOffset);
+
+			if (offsetMagnitude < selfCollisionRadius)
+			{
+				float3 massOffsetNorm = normalize(massOffset);
+				float3 force = massOffsetNorm * selfCollisionForceCoefficient;
+
+				InterlockedAdd(masses[id.x].resultantForceX, (int)(force.x));
+				InterlockedAdd(masses[id.x].resultantForceY, (int)(force.y));
+				InterlockedAdd(masses[id.x].resultantForceZ, (int)(force.z));
+			}
+			interactions++;
+		}
+	}
+
+}
+
+[numthreads(16, 1, 1)]
+void CalculateSphereCollisions(uint3 id : SV_DispatchThreadID)
 {
 	if (numSphereColliders > 0)
 	{

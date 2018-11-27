@@ -6,6 +6,18 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/SampleScene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
+    path: Assets/Scenes/Soft-Body Prototype.unity
+    guid: 33acf98127d66da4695e61ce5b48b35c
+  - enabled: 1
+    path: Assets/Scenes/CSG Prototype.unity
+    guid: 6e152c1ccebe0e34db0dd07f83d9de72
+  - enabled: 1
+    path: Assets/Scenes/1D Prototype.unity
+    guid: 1cd2943f9e0d7454990de4f59309bac2
+  - enabled: 1
+    path: Assets/Scenes/2D Prototype.unity
+    guid: 90d25d217e50d9b42a644dd7eb467925
+  - enabled: 1
+    path: Assets/Scenes/Consolidation Prototype.unity
+    guid: dea2504d144b44e49a8d51fb34e39642
   m_configObjects: {}

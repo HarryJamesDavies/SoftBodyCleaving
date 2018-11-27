@@ -11,6 +11,17 @@ public class VertexGroup
     public bool m_useAveragePosition = false;
     public Vector3 m_averagePosition;
 
+    public VertexGroup()
+    {
+
+    }
+
+    public VertexGroup(int _vertex, Vector3 _normal)
+    {
+        m_vertices.Add(_vertex);
+        AddToSharedNormal(_normal);
+    }
+
     public void AddToSharedNormal(Vector3 _normal)
     {
         m_sharedNormal += _normal;

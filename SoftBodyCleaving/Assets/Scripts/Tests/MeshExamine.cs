@@ -7,6 +7,7 @@ public class MeshExamine : MonoBehaviour {
     public Vector3[] m_vertices;
     public int[] m_indices;
     public Vector3[] m_normals;
+    public Vector2[] m_uvs;
 
     private void Update()
     {
@@ -14,8 +15,8 @@ public class MeshExamine : MonoBehaviour {
         {
             m_vertices = m_mesh.sharedMesh.vertices;
             m_indices = m_mesh.sharedMesh.triangles;
-            m_mesh.sharedMesh.RecalculateNormals();
             m_normals = m_mesh.sharedMesh.normals;
+            m_uvs = m_mesh.sharedMesh.uv;
         }
     }
 }

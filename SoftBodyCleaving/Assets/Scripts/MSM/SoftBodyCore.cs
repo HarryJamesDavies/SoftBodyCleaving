@@ -37,7 +37,8 @@ namespace MSM
 
         private int m_clearKernel;
         private int m_springKernel;
-        private int m_sphereColliderKernel;
+        private int m_selfCollisionsKernel;
+        private int m_sphereCollisionsKernel;
         private int m_displacementKernel;
 
         private bool m_initialise = false;
@@ -134,6 +135,7 @@ namespace MSM
         {
             m_massBuffer = new ComputeBuffer(m_masses.Length, 48);
             m_massBuffer.SetData(m_masses);
+            m_gpuSoftBody.SetInt("numMasses", m_masses.Length);
             m_springBuffer = new ComputeBuffer(m_springs.Length, 12);
             m_springBuffer.SetData(m_springs);
 
@@ -141,7 +143,7 @@ namespace MSM
             m_gpuSoftBody.SetFloat("springCoefficient", m_softBody.m_settings.m_springCoefficient);
             m_gpuSoftBody.SetFloat("dragCoefficient", m_softBody.m_settings.m_dragCoefficient);
             m_gpuSoftBody.SetFloat("pressureCoefficient", (m_softBody.m_settings.m_usePressure) ?
-                m_softBody.m_settings.m_pressureCoefficient : 0.0f);
+                m_softBody.m_settings.m_pressureCoefficient : 0.0f);          
 
             float[] position = new float[3];
             position[0] = transform.position.x;
@@ -155,6 +157,10 @@ namespace MSM
             scale[2] = transform.localScale.z;
             m_gpuSoftBody.SetFloats("localScale", scale);
 
+            m_gpuSoftBody.SetFloat("selfCollisionRadius", m_softBody.m_settings.m_selfCollisionRadius);
+            m_gpuSoftBody.SetFloat("selfCollisionForceCoefficient",
+                m_softBody.m_settings.m_selfCollisionForceCoefficient);
+
             m_clearKernel = m_gpuSoftBody.FindKernel("ClearForces");
             m_gpuSoftBody.SetBuffer(m_clearKernel, "masses", m_massBuffer);
 
@@ -162,8 +168,11 @@ namespace MSM
             m_gpuSoftBody.SetBuffer(m_springKernel, "masses", m_massBuffer);
             m_gpuSoftBody.SetBuffer(m_springKernel, "springs", m_springBuffer);
 
-            m_sphereColliderKernel = m_gpuSoftBody.FindKernel("CalculateSphereColliders");
-            m_gpuSoftBody.SetBuffer(m_sphereColliderKernel, "masses", m_massBuffer);
+            m_selfCollisionsKernel = m_gpuSoftBody.FindKernel("CalculateSelfCollisions");
+            m_gpuSoftBody.SetBuffer(m_selfCollisionsKernel, "masses", m_massBuffer);
+
+            m_sphereCollisionsKernel = m_gpuSoftBody.FindKernel("CalculateSphereCollisions");
+            m_gpuSoftBody.SetBuffer(m_sphereCollisionsKernel, "masses", m_massBuffer);
 
             m_displacementKernel = m_gpuSoftBody.FindKernel("CalculateDisplacement");
             m_gpuSoftBody.SetBuffer(m_displacementKernel, "masses", m_massBuffer);
@@ -205,6 +214,10 @@ namespace MSM
             scale[1] = transform.localScale.y;
             scale[2] = transform.localScale.z;
             m_gpuSoftBody.SetFloats("localScale", scale);
+
+            m_gpuSoftBody.SetFloat("selfCollisionRadius", m_softBody.m_settings.m_selfCollisionRadius);
+            m_gpuSoftBody.SetFloat("selfCollisionForceCoefficient",
+                m_softBody.m_settings.m_selfCollisionForceCoefficient);
         }
 
         public void UpdateSphereColliders()
@@ -220,7 +233,7 @@ namespace MSM
             m_sphereColliders = GeneralForces.s_instance.GetSphereColliders();
             m_sphereColliderBuffer = new ComputeBuffer(m_sphereColliders.Length, 20);
             m_sphereColliderBuffer.SetData(m_sphereColliders);
-            m_gpuSoftBody.SetBuffer(m_sphereColliderKernel, "sphereColliders", m_sphereColliderBuffer);
+            m_gpuSoftBody.SetBuffer(m_sphereCollisionsKernel, "sphereColliders", m_sphereColliderBuffer);
 
             m_gpuSoftBody.SetInt("numSphereColliders", m_sphereColliders.Length);
         }
@@ -238,11 +251,19 @@ namespace MSM
             m_gpuSoftBody.Dispatch(m_clearKernel, massesPerPass, 1, 1);
             m_gpuSoftBody.Dispatch(m_springKernel, springsPerPass, 1, 1);
 
-            if (m_sphereColliders != null && m_softBody.m_settings.m_useCollisions)
+            if(m_softBody.m_settings.m_useCollisions)
             {
-                if (m_sphereColliders.Length > 0)
+                if (m_softBody.m_settings.m_useSelfCollisions)
                 {
-                    m_gpuSoftBody.Dispatch(m_sphereColliderKernel, massesPerPass, 1, 1);
+                    m_gpuSoftBody.Dispatch(m_selfCollisionsKernel, massesPerPass, 1, 1);
+                }
+
+                if (m_sphereColliders != null && m_softBody.m_settings.m_useSphereCollisions)
+                {
+                    if (m_sphereColliders.Length > 0)
+                    {
+                        m_gpuSoftBody.Dispatch(m_sphereCollisionsKernel, massesPerPass, 1, 1);
+                    }
                 }
             }
 
